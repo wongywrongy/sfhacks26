@@ -2,143 +2,236 @@
 
 ## What Is This Product
 
-A financial readiness platform for organizations that help groups of people form housing cooperatives. It replaces the current manual process of collecting individual credit reports, building spreadsheets, and running months of meetings with a single tool that assesses a group's collective financial viability in one session.
+A financial assessment platform for property owners and managers. It answers one question: can this group of people afford this property together, and how should they split the cost?
+
+When multiple people apply to rent or buy a property together — friends sharing an apartment, a family with multiple earners, coworkers going in on a house — the property manager needs to evaluate the group's collective financial picture. CommonGround pulls real credit data for every applicant, models the group's finances, structures fair cost splits, and delivers AI-powered analysis — all in one place.
 
 ## Who Uses It
 
-**Primary user:** Staff at co-op development organizations, community land trusts, and housing nonprofits. These are housing counselors and program managers who guide groups through the co-op formation process.
+**Primary user:** Property owners, property managers, landlords, and real estate agents. Anyone making a business decision about whether to rent or sell to a group of people.
 
-**Secondary user:** Prospective co-op members. They interact with the product only through an intake form. They do not have dashboards or ongoing access.
+**Secondary user:** Applicants. They interact with the product only through an application form. They do not have dashboards or ongoing access.
 
 ## The Problem
 
-When a group of people wants to form a housing cooperative, the financial assessment process is entirely manual. Each person has to go pull their own credit report. A housing counselor reviews each one individually, usually in a spreadsheet. There is no standardized way to evaluate a group's collective creditworthiness. The conversation about who pays what drags on for weeks with no data to ground it. Most groups give up before ever reaching a lender. The entire pipeline runs on paper, gut instinct, and good intentions.
+When a group of people applies for housing together, the property manager has no efficient way to evaluate them as a unit. They collect individual credit reports one by one, maybe in a spreadsheet. There is no standardized way to see the group's collective creditworthiness. There is no tool to model how the group should split costs fairly. The manager either eyeballs it, picks the person with the best credit as the primary leaseholder, or just goes with gut instinct.
 
-No tool exists that pulls real credit data for a group, models their collective financial position, and helps them structure fair contributions.
+No tool exists that pulls real credit data for a group of applicants, models their collective financial position, surfaces risks and dependencies, and helps structure fair cost splits — all with AI analysis baked in.
 
 ## What We Are Building For the Hackathon
 
-The full organization-facing dashboard and a minimal consumer intake form. No member portal, no lender marketplace, no payment processing, no legal document generation.
+The full property manager dashboard and a minimal applicant form. No applicant portal, no lender marketplace, no payment processing, no lease generation.
 
 ---
 
-## Consumer Experience
+## Applicant Experience
 
-### Intake Form
+### Application Form
 
-A prospective co-op member receives a link from their organization. The link opens a single-page form.
+An applicant receives a link from the property manager. The link opens a simple, friendly single-page form. The page communicates: "Your group needs your info to figure out the housing situation. Fill this out and you're done."
 
-The member provides their first name, last name, date of birth, Social Security number, current address, self-reported monthly income, employment type (salaried, freelance, government, gig, retired, or other), and their preferred unit size within the co-op (studio, 1-bedroom, 2-bedroom, or 3-bedroom).
+The applicant provides their first name, last name, date of birth, Social Security number, current address, self-reported monthly income, and employment type (salaried, freelance, government, gig, retired, or other).
 
-The member checks a consent box authorizing the organization to run a credit pull and background screening on their behalf.
+The applicant checks a consent box authorizing the property manager to run a credit check and background screening on their behalf.
 
-The member submits the form.
+The applicant submits the form.
 
-The member sees a confirmation message telling them their information has been submitted and that their organization will follow up with next steps.
+The applicant sees a confirmation message: "You're all set! We'll follow up with next steps."
 
-That is the entire consumer experience. There is no account creation, no login, no dashboard, no follow-up within the product.
+That is the entire applicant experience. There is no account creation, no login, no dashboard, no follow-up within the product.
 
 ---
 
-## Organization Experience
+## Property Manager Experience
 
-### Logging In
+### Homepage — Properties View
 
-The org user logs into the platform and lands on their project dashboard showing all active co-op formation projects.
+The manager logs in and lands on the Properties page. This is a building-centric view that organizes all deals by property.
 
-### Creating a Project
+**Header row:** "Properties" title on the left with a subtitle showing the count of buildings, active deals, and vacant units. "+ Add Property" button on the right.
 
-The org user creates a new project by entering a project name, the target property's estimated price range, the estimated total monthly housing cost (this includes mortgage, property taxes, maintenance, and reserves), the property location, and the expected number of members.
+**Portfolio stats strip:** A single horizontal row showing five aggregate metrics across all properties — monthly revenue (sum of monthly cost for all active deals), total applicants (sum of people across all deals), average DTI (color-coded green at or below 36%, amber at or below 43%, red above 43%), vacant units (amber if any, green if zero), and deals needing attention (count of deals with risk flags, red). These stats aggregate across all deals regardless of whether they are linked to a property or standalone.
 
-The system generates a unique intake link tied to this project. The org shares this link with prospective members however they normally communicate — email, text, in-person during a meeting.
+**AI insight — Activity:** A chronological operational briefing at the top. This is not a static portfolio analysis. It answers three questions in order: what changed recently, what needs the manager's attention right now, and what is progressing on its own. It references specific addresses, unit names, and timeframes. It never contains financial analysis — no DTI numbers, credit scores, or income figures. Those belong inside each deal's assessment tabs.
 
-### Monitoring Intake
+**Building list:** All properties appear in a vertical list. Each property is one glass card.
 
-As members submit their intake forms, the org dashboard shows an intake status board for the project. Each member appears with their name, the date they submitted, and their processing status — either pending, complete, or flagged if something went wrong.
+### Building List — Row Layout
 
-The org can see at a glance how many members have completed intake versus how many are still outstanding.
+Each row in the building list leads with the property type label (apartment, condo, house, flat), followed by the address and city. For multi-unit buildings that expand to show units inside, a caret/chevron appears at the far left before the type label. The caret aligns vertically with the indent markers on child unit rows, creating a consistent visual hierarchy. For single-unit properties (houses, standalone flats), there is no caret — just the type label and address aligned to the same starting position as multi-unit rows.
 
-### Reviewing Individual Members
+### Single-Unit Buildings
 
-The org clicks into any member who has completed intake and sees their full profile.
+Houses and single flats render as a flat single row inside one glass card. No expand/collapse, no tree indentation.
 
-**Identity verification:** A confidence score from 0 to 50 indicating whether this person is who they claim to be. The org sees whether verification passed or raised concerns.
+The row shows: property type and address, number of applicants (ready/total), DTI as a mini inline bar with percentage, average credit score (color-coded green at or above 720, amber at or above 670, red below 670), a stage pill, and last activity with any risk flags.
 
-**Credit data:** The member's credit score, their total number of open accounts, total outstanding debt balances, estimated monthly debt obligations, a summary of their payment history (on-time percentage), any delinquencies, and any public records such as bankruptcies or liens. This is a soft pull and does not affect the member's credit score.
+Clicking the row navigates into the deal.
 
-**Background screening:** Any criminal records found, and any eviction records found. These are presented as factual results for the org to interpret in context — the tool does not make eligibility decisions based on these.
+### Multi-Unit Buildings
 
-**Self-reported information:** The income, employment type, and unit preference the member entered on the intake form.
+Apartment complexes render as a collapsible card. The building header row shows the property type and address on the left with a chevron for expand/collapse, and on the right shows four inline stat columns — total units, active units, vacant units, and revenue from active units — plus a row of tiny stage summary dots, one per unit, colored by that unit's stage. Vacant units show as hollow circles with a dashed border. This gives the manager an instant visual scan of the building's status without expanding.
 
-**AI-generated assessment:** A plain-language evaluation of this member's financial profile written for the org. This is candid and specific. It identifies strengths, risk factors, and how this individual's profile affects the group. For example, it might note that a member has strong payment history but high revolving debt, or that a member's thin credit file means the group shouldn't rely on their score improving before application.
+When expanded, the building shows one row per unit inside the card, indented with a subtle vertical tree line. Each unit row shows the unit name, bedroom count, monthly cost, applicant count, DTI, credit score, stage pill, and last activity. Vacant units render at 50% opacity with a "+ Create Deal" button instead of stats.
 
-**Org actions:** The org can mark each member as approved, flagged for review, or not eligible. They can add private internal notes visible only to org staff.
+### Deal Stages
 
-### Group Analytics
+Every deal progresses through four stages. The manager advances deals manually through stages using action buttons inside each deal. The stage pill on the homepage is a read-only indicator.
 
-Once enough members have completed intake (ideally all expected members), the org accesses the group analytics view.
+**Screening** (gray): Applicants submitted their applications, CRS checks are running or complete. The manager is waiting for data.
 
-**Collective financial picture:** The dashboard shows the group's combined monthly income, combined monthly debt obligations, and the group's debt-to-income ratio measured against the estimated monthly housing cost. It shows the group's estimated borrowing power — the maximum monthly payment and approximate loan amount the group could support based on standard lending thresholds.
+**Review** (amber): All screenings are complete. The manager is reviewing financials, flagging issues, making decisions on individual applicants.
 
-**Income diversity:** A measure of how varied the group's income sources are. A group where everyone works in the same industry has high correlated risk — if that industry has layoffs, everyone is affected simultaneously. A group with diverse employment types (a teacher, a nurse, a government worker, a freelancer) is more resilient. The dashboard surfaces this as a factor.
+**Negotiating** (blue): The manager and applicant group are working out terms. Contribution models have been generated and the group is reviewing or counter-proposing.
 
-**Resilience matrix:** For each member, the system recalculates the group's financial position as if that member left. This reveals which members are critical to the group's viability and which the group could absorb losing. If removing one specific person pushes the group from healthy to unviable, that is a critical dependency the org needs to know about and plan around.
+**Approved** (green): Deal is complete, terms are accepted, ready to sign.
 
-**AI-generated group assessment:** A narrative analysis of the group's overall viability. This identifies the group's core strengths, key risks, dependencies on specific members, correlated income concerns, and any individual credit issues that materially affect the collective picture. This is written for the org in direct, professional language — not softened for member consumption.
+### Creating a Deal
 
-### Contribution Modeler
+The manager creates a new deal by entering a group name (typically the property address or a descriptive name like "412 Irving St — 4BR Apartment"), the property address, the estimated total monthly housing cost (rent or mortgage plus taxes, insurance, maintenance, and reserves as applicable), the target property price range (optional — only relevant for purchases, not rentals), and the expected number of applicants.
 
-When the org is ready to facilitate the financial structure conversation with the group, they open the contribution modeler.
+The system generates a unique invite link tied to this deal. The manager shares this link with applicants however they normally communicate — email, text, in-person. Deals can be linked to a specific unit within a multi-unit property, or they can exist standalone (not linked to any property).
 
-The modeler presents four ways to split the estimated monthly housing cost among members, calculated simultaneously so the org and group can compare them side by side.
+### Monitoring Applications
 
-**Equal split:** The total monthly cost divided evenly among all members. Every member pays the same dollar amount. The dashboard shows what percentage of each member's income this represents — making visible that equal dollars means unequal burden.
+As applicants submit their forms, the dashboard shows application status for the deal. Each person appears with their name, the date they submitted, and their processing status — either pending, complete, or flagged if something went wrong.
 
-**Income proportional:** Each member pays the same percentage of their income toward housing. Members who earn more pay more in dollar terms, but everyone feels the same relative financial pressure. The dashboard shows the dollar amount each member would pay.
+### Reviewing Individual Applicants — People Tab
 
-**Unit-based:** Payments scale with the size of the unit each member selected during intake. A member choosing a 2-bedroom pays more than a member choosing a studio. The dashboard shows the dollar amount and income percentage for each member.
+The People tab shows all applicants in a structured table inside a single glass card. Each person occupies a multi-layer row.
 
-**Hybrid:** Half the total cost is split equally among all members, and the other half is split proportionally by income. This balances shared baseline responsibility with income-sensitive fairness. The dashboard shows the dollar amount and income percentage for each member.
+**Layer 1 — Identity and key numbers:** The person's name, employment type, and submission date on the left. On the right, their monthly income, credit score (prominently displayed, color-coded green at or above 740, amber at or above 670, red below 670), and monthly debt. A chevron on the far right expands the row.
 
-**Custom:** The org manually sets a specific dollar amount for each individual member. The org can start from any of the four preset models as a baseline and then adjust individual members' payments up or down. As the org changes one member's amount, the dashboard shows the remaining unassigned balance that needs to be distributed across other members. The dashboard flags if the total assigned doesn't equal the total monthly cost, and flags any member whose payment exceeds standard affordability thresholds. This allows the org to account for context that the formulas can't capture — a member with upcoming medical expenses, a member who volunteered to pay more in exchange for a preferred unit, or any other arrangement the group agrees to. Gemini analyzes the custom model using the same criteria as the presets but also compares it against the four formula-driven options to show the org how their manual adjustments change the fairness and resilience picture.
+**Layer 2 — Screening sections (expanded):** Three inline sections labeled CREDIT, BACKGROUND, and IDENTITY. Each shows a compact summary: credit section shows the score, number of tradelines, and on-time payment percentage; background section shows criminal and eviction results; identity section shows the verification score and status. These sections occupy roughly 65-70% of the row width and align under the person's name.
 
+**Layer 3 — Risk insight (conditional):** Only appears for flagged applicants. A 2-3 sentence AI-generated assessment specific to this person's risk factors and how they affect the group. This is factual and references specific numbers — never speculative about motivations or character.
 
-For every model, the dashboard also shows each member's financial breathing room — how much monthly income they retain after existing debts and the co-op payment. It also shows how resilient the group would be under each model if one member stopped paying.
+**Overlay panel:** Clicking a person's row opens a centered glass overlay panel (not a side panel) that shows their complete profile. The overlay has a sticky header with the person's name, status controls, and five key metrics (credit score, monthly income, total debt, DTI, identity score). Below that, a two-column detail area: credit report and tradelines on the left, background screening and status/notes on the right. The overlay uses glass morphism styling — translucent white background with strong backdrop blur, so the list view remains softly visible behind it.
 
-**Member toggle simulator:** The org can remove or add members from the calculation and watch all four models update in real time. This lets the org explore scenarios: what if this person drops out, what if we add a sixth member, what if someone switches to a smaller unit. This is the most interactive and visually compelling feature of the product.
+**AI analysis (auto-generated):** Each person's assessment generates automatically as soon as their screening data is processed. The analysis is candid, specific, and written for a business audience. It identifies strengths, risk factors, and how this individual affects the group.
 
-**AI-generated model analysis:** A contextual comparison of the four models tailored to this specific group's income distribution. It explains tradeoffs in plain language without prescribing a choice. For example, it might note that the equal split creates an affordability problem for the lowest-income member, or that the proportional model works well because the group's incomes are relatively close. The tone is advisory — the group decides, the tool informs.
+**Manager actions:** The manager can mark each person as cleared, flagged for review, or declined. They can add private notes visible only to their team.
 
-### Readiness Report
+### Group Financials — Financials Tab
 
-When the org determines the group is ready to approach lenders, they generate a readiness report.
+Once at least two applicants have completed their applications, the group financials automatically populate.
 
-The report combines the group's quantitative financial summary, the AI-generated narrative assessment written in lender-appropriate language, the contribution model the group selected (or all four for comparison), summary information on individual members at whatever level of detail the org chooses, and recommended next steps for approaching lenders.
+**Collective financial picture:** The dashboard shows the group's combined monthly income, combined monthly debt obligations, and the group's debt-to-income ratio measured against the property's monthly cost. For purchase scenarios, it shows the group's estimated buying power — the maximum monthly payment and approximate loan amount the group could support based on standard lending thresholds.
 
-This report is a document the org and group can bring to a lending conversation. It does not replace the lender's own underwriting — it organizes the group's financial story so they can present themselves coherently instead of showing up as five confused people with individual credit reports.
+**Income sources:** A summary of how varied the group's income sources are. A group where everyone works in the same industry has high correlated risk. A group with diverse employment types is more resilient. The dashboard surfaces this.
+
+**Risk analysis (dependency simulation):** The manager can select one or more applicants using checkboxes to simulate those people leaving. The system recalculates the group's financial position without the selected people, revealing which people are critical to the group's viability. This is a multi-select interface — the manager can simulate multiple departures simultaneously.
+
+**AI analysis (auto-generated):** Narrative insights appear inline throughout the financials tab, placed directly next to the data they interpret. The manager never requests these. They are generated automatically whenever the group composition changes.
+
+### Cost Split — Breakdown Tab
+
+The manager opens the Breakdown tab to see three ways to divide the monthly cost among the applicants, calculated simultaneously for side-by-side comparison.
+
+**Even split:** The total monthly cost divided equally among all people. Every person pays the same dollar amount. The dashboard shows what percentage of each person's income this represents — making visible that equal dollars means unequal burden.
+
+**Income-based:** Each person pays the same percentage of their income toward housing. People who earn more pay more in dollar terms, but everyone feels the same relative financial pressure.
+
+**Balanced:** Half the total cost is split equally, and the other half is split proportionally by income. This balances shared baseline responsibility with income-sensitive fairness.
+
+For every model, the dashboard shows each person's financial breathing room — how much monthly income they retain after existing debts and the housing payment. Breathing room is color-coded: green if comfortable, yellow if tight, red if squeezed.
+
+**Person toggle:** The manager can toggle people in and out of the calculation and watch all three models update in real time. This lets the manager explore scenarios.
+
+**Custom split:** The manager can manually set a dollar amount for each person, starting from any of the three models as a baseline. The system tracks the total assigned versus the total monthly cost and flags any shortfall or overage. It also flags any person whose payment exceeds 30% of their income.
+
+**AI analysis (auto-generated):** A contextual comparison of the three models appears inline, tailored to this specific group's income distribution. It explains tradeoffs in plain language without prescribing a choice.
+
+### AI Insights Are Automatic and Integrated
+
+This is a core product principle. AI analysis is not a feature the user opts into. It is woven into the fabric of the dashboard.
+
+**Per-person analysis** generates automatically as the final step of screening data processing. By the time the manager opens a person's profile, the analysis is already there.
+
+**Group-level analysis** generates automatically whenever the group composition changes — a new person completes screening, or a review status changes. The insights appear inline throughout the Financials and Breakdown tabs, placed next to the data they interpret.
+
+**Homepage activity insight** generates automatically and provides a chronological operational briefing — not financial analysis.
+
+**The manager never clicks a "Generate" or "Analyze" button.** There are no AI loading states, no "Get Insights" CTAs. Insights either exist (because the data is ready) or they don't appear yet (because data is still processing).
+
+**One exception:** The Financial Summary (report) has a "Generate Summary" button because the manager may want to choose which split model to feature.
+
+### AI Insight Content Rules
+
+All AI-generated insights across every tab follow strict content rules.
+
+Every insight is exactly 2-3 sentences of flowing prose. No dashes, bullet points, numbered lists, or line breaks within an insight. No inferences about motivations, character traits, or future behavior. No speculation about why a data point exists — only that it exists and what it means for the application. Every sentence references a specific number, percentage, or person's name. Data points are connected to standard industry thresholds or group-level consequences.
+
+The pattern is: state a data point, connect it to a threshold or consequence, then state what the manager should know or do.
+
+### Financial Summary
+
+When the manager is ready to document the group's assessment, they generate a financial summary.
+
+The summary compiles the insights that already exist throughout the dashboard into a single exportable document. The AI writes a brief introduction and transitions that connect these pieces into a cohesive narrative.
+
+This is a document the manager can use for their own records, share with business partners, or present to lenders if the group is purchasing.
 
 ---
 
 ## Key Business Rules
 
-**Group size:** Minimum 2 members, maximum 10 for the hackathon scope.
+**Group size:** Minimum 2 applicants, maximum 10 for the hackathon scope.
 
-**Partial data:** The dashboard should show whatever data is available as members complete intake. Group analytics require a minimum of 2 completed members to be meaningful. The contribution modeler requires all expected members or a deliberate decision by the org to proceed with fewer.
+**Partial data:** The dashboard shows whatever data is available as applicants complete their forms. Group financials require a minimum of 2 completed applicants. The Breakdown tab works with whatever applicants are available.
 
-**Privacy:** Members never see each other's individual data through the product. The org sees everything. If the org chooses to share information with the group during facilitation meetings, that is their decision — the product does not expose it.
+**Privacy:** Applicants never see each other's individual data through the product. The manager sees everything.
 
-**Screening is informational:** Criminal and eviction records are presented as facts for the org to interpret. The product does not automatically disqualify anyone based on background results. The org makes all eligibility decisions.
+**Screening is informational:** Criminal and eviction records are presented as facts for the manager to interpret. The product does not automatically disqualify anyone based on background results. The manager makes all decisions.
 
-**Income is self-reported:** The product does not verify income. This is acknowledged as a limitation. A production version could integrate income verification services.
+**Income is self-reported:** The product does not verify income. This is acknowledged as a limitation.
 
-**The product does not approve loans.** It does not make credit decisions. It does not generate legally binding agreements. It is an informational and organizational tool that prepares groups for a process that currently has no tooling.
+**The product does not approve loans or leases.** It does not make credit decisions. It does not generate legally binding agreements. It is an informational tool that helps property managers make well-informed decisions about applicant groups.
+
+**AI insights are automatic.** Person-level analysis fires after screening completes. Group-level analysis fires when group composition changes. Homepage activity insight fires on page load based on recent events. No user action triggers AI generation except the final summary compilation.
+
+**Deal stages are manual.** The manager advances deals through four stages (Screening, Review, Negotiating, Approved) using action buttons. The system does not auto-advance stages.
+
+---
+
+## Sample Data
+
+### Deal 1: "412 Irving St — 4BR Apartment"
+San Francisco, CA. $4,800/mo rent. Four friends applying together.
+
+- **Mei Chen** — $3,200/mo, gig work, credit score 640, $280/mo debt. Thin credit file, DoorDash + freelance design.
+- **Alex Torres** — $4,100/mo, salaried, credit score 710, $450/mo debt. Junior analyst at a startup.
+- **Sam Okafor** — $6,800/mo, salaried, credit score 745, $620/mo debt. Software engineer, strong anchor.
+- **Yuki Tanaka** — $3,400/mo, freelance, credit score 665, $180/mo debt. Freelance photographer, inconsistent income.
+
+Why this deal is interesting: Sam is the financial anchor — remove him and the group can't afford the place. Even split at $1,200 each is 37.5% of Mei's income but only 17.6% of Sam's.
+
+### Deal 2: "1847 Fruitvale Ave — 3BR House"
+Oakland, CA. $3,600/mo rent. A family with three adult earners.
+
+- **Gloria Reyes** — $3,800/mo, government, credit score 720, $340/mo debt. City clerk, steady paycheck.
+- **Marco Reyes** — $4,200/mo, salaried, credit score 695, $780/mo debt. Warehouse manager, high auto loan.
+- **Sofia Reyes** — $2,600/mo, freelance, credit score 610, $150/mo debt. Youngest sibling, freelance bookkeeping.
+
+Why this deal is interesting: Marco has good income but high debt eats into breathing room. Sofia's low income and thin credit are a concern, but she has almost no debt.
+
+### Deal 3: "2250 Clement St — 5BR Flat"
+San Francisco, CA. $6,500/mo rent. Five working professionals from a housing group.
+
+- **David Park** — $8,200/mo, salaried, credit score 760, $520/mo debt. Product manager.
+- **Keisha Williams** — $5,100/mo, salaried, credit score 725, $380/mo debt. Registered nurse.
+- **Tomás Herrera** — $4,500/mo, government, credit score 700, $290/mo debt. Public school teacher.
+- **Priya Sharma** — $6,300/mo, salaried, credit score 735, $410/mo debt. UX designer.
+- **Andre Johnson** — $3,900/mo, gig, credit score 650, $550/mo debt. Rideshare + personal trainer.
+
+Why this deal is interesting: Wide income spread. David and Priya carry the financial weight. The group survives losing Andre but collapses without David. Even split at $1,300 is 33% of Andre's income.
 
 ---
 
 ## What Success Looks Like
 
-An org creates a project, sends intake links to five prospective co-op members, and within a day has a complete picture of the group's collective financial viability — something that currently takes weeks or months of manual work.
+A property manager creates a deal for a 4-bedroom apartment, sends invite links to four applicants, and within a day has a complete picture of whether this group can afford the place — with AI analysis already baked in, split models calculated, and a professional summary ready to generate.
 
-The org can identify risks early, have data-driven conversations with members who need to strengthen their profiles, facilitate a fair contribution structure discussion grounded in real numbers instead of emotions, and present a coherent financial package when the group approaches lenders.
+The manager logs into the Properties page, sees a chronological activity briefing telling them what changed and what needs attention, scans the building list to see stage progress across all properties at a glance, then clicks into the deal that needs their review.
 
-More co-ops form successfully because the biggest barrier — financial uncertainty — is eliminated.
+No spreadsheets. No guesswork. No weeks of back-and-forth. The manager opens the dashboard and the answer is already there.
