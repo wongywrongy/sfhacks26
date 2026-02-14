@@ -1,0 +1,285 @@
+# CommonGround — Technical Specification
+
+## Architecture Overview
+
+The application is a three-tier system. A React frontend serves two interfaces — the org dashboard and the consumer intake form. A Node.js/Express backend handles all business logic, external API orchestration, and data processing. MongoDB Atlas stores all persistent data.
+
+The backend is the only layer that communicates with external services. The frontend never calls CRS or Gemini directly. All sensitive data (SSNs, credit reports) passes through the backend and is stored in MongoDB. The frontend receives only what it needs to render.
+
+---
+
+## External Service Integration
+
+### CRS API (Credit, Background, Identity)
+
+**Base URL:** https://api-sandbox.stitchcredit.com
+
+**Authentication:** POST to /api/users/login with username and password. Returns a JWT Bearer token. Token is included as an Authorization header on all subsequent requests. Token should be cached on the backend and refreshed when expired.
+
+**Per-member API calls (4 calls per member):**
+
+**1. Credit Report (Soft Pull)**
+
+Endpoint: POST /api/experian/credit-profile/credit-report/standard/exp-prequal-vantage4
+
+Request body requires: firstName, lastName, SSN (9 digits, no dashes), birthDate (YYYY-MM-DD format), and an addresses array with street, city, state, zip.
+
+Response returns: VantageScore 4 credit score, tradeline array (each tradeline has creditor name, account type, balance, monthly payment, payment status, open date), inquiry array, public records array, and summary statistics.
+
+We use Experian only for the hackathon. Production would pull from all three bureaus.
+
+**2. Criminal Background Check**
+
+Endpoint: POST /api/criminal/new-request
+
+Request body requires: subjectInfo with first, last, dob (MM-dd-yyyy format — different from credit), ssn (with dashes XXX-XX-XXXX — different from credit), and address fields (address, city, state, zip).
+
+Response returns: Array of candidate records with offense details, or empty if clean.
+
+**3. Eviction Check**
+
+Endpoint: POST /api/eviction/new-request
+
+Request body requires: Same format as criminal — subjectInfo with first, last, dob (MM-dd-yyyy), ssn (XXX-XX-XXXX), and address fields.
+
+Response returns: Array of candidate records with eviction details, or empty if clean.
+
+**4. Identity Verification (FlexID)**
+
+Endpoint: POST /api/flex-id/flex-id
+
+Request body requires: SSN or DOB (we have both from intake). Format follows the FlexID schema.
+
+Response returns: CVI score from 0 to 50. Higher is more confident.
+
+**Critical format differences to handle in the backend:**
+
+Credit endpoints expect dates as YYYY-MM-DD and SSN without dashes. Criminal and eviction endpoints expect dates as MM-dd-yyyy and SSN with dashes. The backend must transform the member's single set of intake data into the correct format for each endpoint. Sandbox test SSNs all start with 666.
+
+**Error handling:** Any CRS call can fail. The backend should catch failures per-call and mark that specific check as "failed" on the member record rather than failing the entire intake. The org dashboard should show which checks succeeded and which need retry.
+
+### Google Gemini API
+
+**Authentication:** API key passed as a header. Free credits provided for the hackathon.
+
+**Usage pattern:** The backend sends structured prompts to Gemini containing processed financial data (never raw PII like SSNs). Gemini returns natural language text that the backend stores in MongoDB.
+
+**Four distinct prompt contexts:**
+
+**Individual member assessment** — Triggered after a member's CRS data is processed. Input: credit score, debt summary, payment history summary, employment type, income. Output: 2-3 paragraph candid assessment of this member's financial profile and how they affect a cooperative group. Tone: professional, direct, written for an org audience.
+
+**Group viability assessment** — Triggered when org views group analytics (or when group composition changes). Input: all member financial summaries, group aggregate metrics, resilience matrix results. Output: narrative analysis of the group's collective strengths, risks, dependencies, and correlated concerns. Tone: professional, analytical.
+
+**Contribution model analysis** — Triggered when org opens the contribution modeler. Input: the four model outputs with per-member breakdowns. Output: contextual comparison explaining tradeoffs between models for this specific group. Tone: advisory, balanced, non-prescriptive.
+
+**Readiness report narrative** — Triggered when org generates the report. Input: full group financial profile and selected contribution model. Output: lender-appropriate narrative summarizing the group's financial position and readiness. Tone: formal, confidence-building, factual.
+
+**Prompt safety:** Never include SSNs, full names, or raw addresses in Gemini prompts. Use member identifiers like "Member 1" or first names only. Include only processed financial summaries, not raw CRS responses.
+
+### MongoDB Atlas
+
+**Authentication:** Connection string with credentials stored in environment variables.
+
+**Database name:** commonground
+
+**Collections:** projects, orgs
+
+---
+
+## Data Models
+
+### Organization
+
+Represents a co-op development org using the platform.
+
+Fields: org ID (auto-generated), org name, login credentials (hashed password), contact email, date created.
+
+One org has many projects.
+
+### Project
+
+Represents a single co-op formation effort.
+
+Fields: project ID (auto-generated), parent org ID, project name, target property price (low and high range), estimated monthly housing cost, property location (city and state), expected member count, intake link token (unique string used to generate the shareable URL), project status (one of: intake, assessment, modeling, ready), date created, date last updated.
+
+One project has many members.
+
+### Member
+
+Represents a prospective co-op member within a project.
+
+Fields: member ID (auto-generated), parent project ID, date submitted.
+
+**Intake data (from the form):** first name, last name, date of birth, SSN (encrypted at rest), street address, city, state, zip, self-reported monthly income, employment type, unit size preference.
+
+**CRS results (from API calls):**
+
+Credit: score, total open tradelines count, total debt balance, estimated monthly debt obligations, on-time payment percentage, delinquency count, public records count, full tradeline array (creditor, type, balance, monthly payment, status), processing status (pending, complete, failed).
+
+Criminal: records array (offense details), processing status.
+
+Eviction: records array (eviction details), processing status.
+
+Identity: CVI score, verification status (verified, uncertain, failed), processing status.
+
+**Computed individual metrics:** personal debt-to-income ratio (monthly obligations divided by monthly income), monthly disposable income after debt.
+
+**AI assessment:** Gemini-generated individual assessment text, timestamp of generation.
+
+**Org-assigned fields:** org status (pending, approved, flagged, ineligible), org notes (free text).
+
+### Group Metrics (computed, stored on the Project)
+
+Fields: combined monthly income, combined monthly debt obligations, group DTI ratio, estimated borrowing power (max monthly payment and approximate loan amount), income diversity score (ratio of unique employment types to total members).
+
+**Resilience matrix:** For each member — the group DTI recalculated without that member, and a boolean indicating whether the remaining group stays below the 43% viability threshold.
+
+### Contribution Models (computed, stored on the Project)
+
+Four model arrays, each containing one entry per active member.
+
+Each entry contains: member ID, member display name, monthly payment amount, payment as percentage of their income, monthly breathing room (income minus existing debt minus co-op payment).
+
+**Model definitions:**
+
+Equal: total monthly cost divided by member count.
+
+Proportional: each member's income divided by combined income, multiplied by total monthly cost.
+
+Unit-based: weighted by unit preference (studio 0.7, 1BR 1.0, 2BR 1.3, 3BR 1.6), weights normalized to sum to 1, each weight multiplied by total monthly cost.
+
+Hybrid: 50% of total cost split equally, remaining 50% split by income proportion.
+
+Custom: org manually sets a dollar amount or income percentage for each individual member. The org can start from any of the four preset models as a baseline and adjust individual amounts. The system tracks the total assigned versus the total monthly cost and flags any shortfall or overage. If the org adjusts one member's payment down, the remaining unassigned balance is displayed so the org can redistribute it. The system also flags any member whose assigned payment exceeds standard affordability thresholds (over 30% of income toward housing). Gemini analyzes the custom model the same way it analyzes presets — evaluating fairness, breathing room, and resilience — but also compares the custom model against the four presets to surface how the manual adjustments differ from formula-driven options.
+
+### Readiness Report (stored on the Project)
+
+Fields: generated timestamp, selected contribution model name, Gemini narrative text, generation status (pending, complete, failed).
+
+---
+
+## API Contracts (Backend Endpoints)
+
+### Authentication
+
+**POST /api/auth/login** — Org logs in. Accepts email and password. Returns a session token.
+
+### Projects
+
+**GET /api/projects** — Returns all projects for the authenticated org. Used by the project dashboard.
+
+**POST /api/projects** — Creates a new project. Accepts project name, price range, monthly cost, location, expected members. Returns the project with its generated intake link.
+
+**GET /api/projects/:projectId** — Returns full project detail including member list with statuses, group metrics, and contribution models.
+
+### Member Intake
+
+**POST /api/intake/:intakeToken** — Public endpoint (no auth required). This is what the consumer intake form submits to. Accepts all intake form fields. Creates a member record, then triggers CRS API calls asynchronously. Returns a simple success confirmation.
+
+**GET /api/projects/:projectId/members** — Returns all members for a project with their processing statuses. Org-authenticated.
+
+**GET /api/projects/:projectId/members/:memberId** — Returns full member detail including all CRS results and AI assessment. Org-authenticated.
+
+**PUT /api/projects/:projectId/members/:memberId/status** — Updates a member's org status (approved, flagged, ineligible) and org notes. Org-authenticated.
+
+### Group Analytics
+
+**GET /api/projects/:projectId/analytics** — Triggers recalculation of group metrics and resilience matrix based on current approved members. Returns the full group analytics object. Org-authenticated.
+
+### Contribution Models
+
+**GET /api/projects/:projectId/contributions** — Returns all five contribution models (four presets plus custom if one exists) calculated for current approved members. Org-authenticated.
+
+**GET /api/projects/:projectId/contributions?exclude=memberId1,memberId2** — Returns all models recalculated with specified members excluded. This powers the member toggle simulator. Org-authenticated.
+
+**PUT /api/projects/:projectId/contributions/custom** — Creates or updates the custom contribution model. Accepts an array of member ID and payment amount pairs, and optionally a base model name indicating which preset the org started from. Backend validates that amounts sum to the total monthly cost and flags any affordability threshold violations. Org-authenticated.
+
+### AI Insights
+
+**POST /api/projects/:projectId/members/:memberId/assess** — Triggers Gemini to generate an individual member assessment. Stores result on the member record. Org-authenticated.
+
+**POST /api/projects/:projectId/assess** — Triggers Gemini to generate the group viability assessment and contribution model analysis. Stores results on the project record. Org-authenticated.
+
+### Readiness Report
+
+**POST /api/projects/:projectId/report** — Triggers Gemini to generate the readiness report narrative. Accepts the selected contribution model name. Stores the complete report on the project record. Org-authenticated.
+
+**GET /api/projects/:projectId/report** — Returns the generated readiness report. Org-authenticated.
+
+---
+
+## Processing Flow
+
+### When a member submits the intake form:
+
+1. Backend validates all required fields.
+2. Backend creates a member record in MongoDB with status "pending" on all CRS checks.
+3. Backend fires all four CRS calls (credit, criminal, eviction, identity) concurrently — transforming the intake data into the correct format for each endpoint.
+4. As each call returns, the backend updates the member record with results and marks that check as "complete" or "failed."
+5. Once the credit pull completes, the backend computes individual metrics (personal DTI, disposable income).
+6. Once all checks are complete, the backend sends processed data to Gemini for individual assessment.
+7. Gemini response is stored on the member record.
+8. The member's processing status on the org dashboard updates from "pending" to "complete."
+
+### When the org views group analytics:
+
+1. Backend gathers all members marked "approved" for this project.
+2. Backend computes combined income, combined debt, group DTI, borrowing power, income diversity.
+3. Backend runs the resilience simulation — loops through each member, recalculates group DTI without them.
+4. Backend sends the full group profile to Gemini for group assessment.
+5. All results stored on the project document.
+6. Frontend renders the analytics dashboard.
+
+### When the org opens the contribution modeler:
+
+1. Backend gathers approved members and the project's estimated monthly cost.
+2. Backend calculates all four preset models simultaneously.
+3. If a custom model exists on the project, it is included alongside the presets.
+4. Backend sends model outputs to Gemini for comparative analysis (including custom if present).
+5. Frontend renders all models side by side with Gemini's narrative.
+
+### When the org edits the custom model:
+
+1. Frontend sends the array of member payment amounts to the backend.
+2. Backend validates that amounts sum to the total monthly cost. If not, returns the shortfall or overage amount.
+3. Backend flags any member whose payment exceeds 30% of their income.
+4. Backend recalculates breathing room and resilience for the custom model.
+5. Backend stores the custom model on the project document.
+6. On the next Gemini analysis request, custom model is included in the comparison.
+
+### When the org toggles a member out:
+
+1. Frontend sends request with the excluded member ID(s).
+2. Backend recalculates all four models excluding those members.
+3. Frontend updates in real time. Gemini is not re-called for toggles (too slow) — only the quantitative models update. Gemini analysis refreshes only on explicit request.
+
+### When the org generates the readiness report:
+
+1. Backend pulls full project data — group metrics, selected contribution model, member summaries.
+2. Backend sends to Gemini with the lender-facing prompt.
+3. Gemini narrative is stored on the project.
+4. Frontend presents the report for review and download.
+
+---
+
+## Security Considerations
+
+**SSN handling:** SSNs are collected on the intake form over HTTPS, transmitted to the backend, used immediately for CRS API calls, and stored encrypted in MongoDB. The frontend never stores SSNs. The org dashboard never displays full SSNs — only last 4 digits for identification.
+
+**Gemini prompt safety:** No SSNs, full addresses, or other PII in Gemini prompts. Members referenced by first name or "Member N" identifiers only.
+
+**Authentication:** Org users authenticate with email/password. Session tokens expire. Intake form links are public but contain unique tokens that cannot be guessed.
+
+**For the hackathon:** Full encryption and production-grade security are not expected. But the architecture should demonstrate awareness of these concerns. Use HTTPS, don't log SSNs, don't expose them in the frontend.
+
+---
+
+## Hackathon Prioritization
+
+**Must build (core demo):** Consumer intake form, CRS credit pull integration, org project dashboard, individual member profile view with CRS data, group analytics with DTI and resilience matrix, contribution modeler with all four models and member toggle, Gemini integration for at least one context (group assessment or model analysis).
+
+**Should build (strengthens demo):** CRS criminal and eviction integration, CRS FlexID integration, Gemini individual member assessments, readiness report generation, all four Gemini prompt contexts.
+
+**Nice to have (if time allows):** Polished readiness report PDF export, real-time dashboard updates via websockets, org notes and status management per member.
+
+**Skip entirely:** Member portal, org account creation flow (hardcode one org for demo), real authentication system (basic middleware is fine), mobile responsiveness.

@@ -1,0 +1,144 @@
+# CommonGround — Functional Specification
+
+## What Is This Product
+
+A financial readiness platform for organizations that help groups of people form housing cooperatives. It replaces the current manual process of collecting individual credit reports, building spreadsheets, and running months of meetings with a single tool that assesses a group's collective financial viability in one session.
+
+## Who Uses It
+
+**Primary user:** Staff at co-op development organizations, community land trusts, and housing nonprofits. These are housing counselors and program managers who guide groups through the co-op formation process.
+
+**Secondary user:** Prospective co-op members. They interact with the product only through an intake form. They do not have dashboards or ongoing access.
+
+## The Problem
+
+When a group of people wants to form a housing cooperative, the financial assessment process is entirely manual. Each person has to go pull their own credit report. A housing counselor reviews each one individually, usually in a spreadsheet. There is no standardized way to evaluate a group's collective creditworthiness. The conversation about who pays what drags on for weeks with no data to ground it. Most groups give up before ever reaching a lender. The entire pipeline runs on paper, gut instinct, and good intentions.
+
+No tool exists that pulls real credit data for a group, models their collective financial position, and helps them structure fair contributions.
+
+## What We Are Building For the Hackathon
+
+The full organization-facing dashboard and a minimal consumer intake form. No member portal, no lender marketplace, no payment processing, no legal document generation.
+
+---
+
+## Consumer Experience
+
+### Intake Form
+
+A prospective co-op member receives a link from their organization. The link opens a single-page form.
+
+The member provides their first name, last name, date of birth, Social Security number, current address, self-reported monthly income, employment type (salaried, freelance, government, gig, retired, or other), and their preferred unit size within the co-op (studio, 1-bedroom, 2-bedroom, or 3-bedroom).
+
+The member checks a consent box authorizing the organization to run a credit pull and background screening on their behalf.
+
+The member submits the form.
+
+The member sees a confirmation message telling them their information has been submitted and that their organization will follow up with next steps.
+
+That is the entire consumer experience. There is no account creation, no login, no dashboard, no follow-up within the product.
+
+---
+
+## Organization Experience
+
+### Logging In
+
+The org user logs into the platform and lands on their project dashboard showing all active co-op formation projects.
+
+### Creating a Project
+
+The org user creates a new project by entering a project name, the target property's estimated price range, the estimated total monthly housing cost (this includes mortgage, property taxes, maintenance, and reserves), the property location, and the expected number of members.
+
+The system generates a unique intake link tied to this project. The org shares this link with prospective members however they normally communicate — email, text, in-person during a meeting.
+
+### Monitoring Intake
+
+As members submit their intake forms, the org dashboard shows an intake status board for the project. Each member appears with their name, the date they submitted, and their processing status — either pending, complete, or flagged if something went wrong.
+
+The org can see at a glance how many members have completed intake versus how many are still outstanding.
+
+### Reviewing Individual Members
+
+The org clicks into any member who has completed intake and sees their full profile.
+
+**Identity verification:** A confidence score from 0 to 50 indicating whether this person is who they claim to be. The org sees whether verification passed or raised concerns.
+
+**Credit data:** The member's credit score, their total number of open accounts, total outstanding debt balances, estimated monthly debt obligations, a summary of their payment history (on-time percentage), any delinquencies, and any public records such as bankruptcies or liens. This is a soft pull and does not affect the member's credit score.
+
+**Background screening:** Any criminal records found, and any eviction records found. These are presented as factual results for the org to interpret in context — the tool does not make eligibility decisions based on these.
+
+**Self-reported information:** The income, employment type, and unit preference the member entered on the intake form.
+
+**AI-generated assessment:** A plain-language evaluation of this member's financial profile written for the org. This is candid and specific. It identifies strengths, risk factors, and how this individual's profile affects the group. For example, it might note that a member has strong payment history but high revolving debt, or that a member's thin credit file means the group shouldn't rely on their score improving before application.
+
+**Org actions:** The org can mark each member as approved, flagged for review, or not eligible. They can add private internal notes visible only to org staff.
+
+### Group Analytics
+
+Once enough members have completed intake (ideally all expected members), the org accesses the group analytics view.
+
+**Collective financial picture:** The dashboard shows the group's combined monthly income, combined monthly debt obligations, and the group's debt-to-income ratio measured against the estimated monthly housing cost. It shows the group's estimated borrowing power — the maximum monthly payment and approximate loan amount the group could support based on standard lending thresholds.
+
+**Income diversity:** A measure of how varied the group's income sources are. A group where everyone works in the same industry has high correlated risk — if that industry has layoffs, everyone is affected simultaneously. A group with diverse employment types (a teacher, a nurse, a government worker, a freelancer) is more resilient. The dashboard surfaces this as a factor.
+
+**Resilience matrix:** For each member, the system recalculates the group's financial position as if that member left. This reveals which members are critical to the group's viability and which the group could absorb losing. If removing one specific person pushes the group from healthy to unviable, that is a critical dependency the org needs to know about and plan around.
+
+**AI-generated group assessment:** A narrative analysis of the group's overall viability. This identifies the group's core strengths, key risks, dependencies on specific members, correlated income concerns, and any individual credit issues that materially affect the collective picture. This is written for the org in direct, professional language — not softened for member consumption.
+
+### Contribution Modeler
+
+When the org is ready to facilitate the financial structure conversation with the group, they open the contribution modeler.
+
+The modeler presents four ways to split the estimated monthly housing cost among members, calculated simultaneously so the org and group can compare them side by side.
+
+**Equal split:** The total monthly cost divided evenly among all members. Every member pays the same dollar amount. The dashboard shows what percentage of each member's income this represents — making visible that equal dollars means unequal burden.
+
+**Income proportional:** Each member pays the same percentage of their income toward housing. Members who earn more pay more in dollar terms, but everyone feels the same relative financial pressure. The dashboard shows the dollar amount each member would pay.
+
+**Unit-based:** Payments scale with the size of the unit each member selected during intake. A member choosing a 2-bedroom pays more than a member choosing a studio. The dashboard shows the dollar amount and income percentage for each member.
+
+**Hybrid:** Half the total cost is split equally among all members, and the other half is split proportionally by income. This balances shared baseline responsibility with income-sensitive fairness. The dashboard shows the dollar amount and income percentage for each member.
+
+**Custom:** The org manually sets a specific dollar amount for each individual member. The org can start from any of the four preset models as a baseline and then adjust individual members' payments up or down. As the org changes one member's amount, the dashboard shows the remaining unassigned balance that needs to be distributed across other members. The dashboard flags if the total assigned doesn't equal the total monthly cost, and flags any member whose payment exceeds standard affordability thresholds. This allows the org to account for context that the formulas can't capture — a member with upcoming medical expenses, a member who volunteered to pay more in exchange for a preferred unit, or any other arrangement the group agrees to. Gemini analyzes the custom model using the same criteria as the presets but also compares it against the four formula-driven options to show the org how their manual adjustments change the fairness and resilience picture.
+
+
+For every model, the dashboard also shows each member's financial breathing room — how much monthly income they retain after existing debts and the co-op payment. It also shows how resilient the group would be under each model if one member stopped paying.
+
+**Member toggle simulator:** The org can remove or add members from the calculation and watch all four models update in real time. This lets the org explore scenarios: what if this person drops out, what if we add a sixth member, what if someone switches to a smaller unit. This is the most interactive and visually compelling feature of the product.
+
+**AI-generated model analysis:** A contextual comparison of the four models tailored to this specific group's income distribution. It explains tradeoffs in plain language without prescribing a choice. For example, it might note that the equal split creates an affordability problem for the lowest-income member, or that the proportional model works well because the group's incomes are relatively close. The tone is advisory — the group decides, the tool informs.
+
+### Readiness Report
+
+When the org determines the group is ready to approach lenders, they generate a readiness report.
+
+The report combines the group's quantitative financial summary, the AI-generated narrative assessment written in lender-appropriate language, the contribution model the group selected (or all four for comparison), summary information on individual members at whatever level of detail the org chooses, and recommended next steps for approaching lenders.
+
+This report is a document the org and group can bring to a lending conversation. It does not replace the lender's own underwriting — it organizes the group's financial story so they can present themselves coherently instead of showing up as five confused people with individual credit reports.
+
+---
+
+## Key Business Rules
+
+**Group size:** Minimum 2 members, maximum 10 for the hackathon scope.
+
+**Partial data:** The dashboard should show whatever data is available as members complete intake. Group analytics require a minimum of 2 completed members to be meaningful. The contribution modeler requires all expected members or a deliberate decision by the org to proceed with fewer.
+
+**Privacy:** Members never see each other's individual data through the product. The org sees everything. If the org chooses to share information with the group during facilitation meetings, that is their decision — the product does not expose it.
+
+**Screening is informational:** Criminal and eviction records are presented as facts for the org to interpret. The product does not automatically disqualify anyone based on background results. The org makes all eligibility decisions.
+
+**Income is self-reported:** The product does not verify income. This is acknowledged as a limitation. A production version could integrate income verification services.
+
+**The product does not approve loans.** It does not make credit decisions. It does not generate legally binding agreements. It is an informational and organizational tool that prepares groups for a process that currently has no tooling.
+
+---
+
+## What Success Looks Like
+
+An org creates a project, sends intake links to five prospective co-op members, and within a day has a complete picture of the group's collective financial viability — something that currently takes weeks or months of manual work.
+
+The org can identify risks early, have data-driven conversations with members who need to strengthen their profiles, facilitate a fair contribution structure discussion grounded in real numbers instead of emotions, and present a coherent financial package when the group approaches lenders.
+
+More co-ops form successfully because the biggest barrier — financial uncertainty — is eliminated.
