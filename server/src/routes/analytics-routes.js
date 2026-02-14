@@ -4,7 +4,6 @@ const {
   getAnalytics,
   getContributions,
   updateCustomModel,
-  assessMember,
   createReport,
   getReport,
 } = require('../controllers/analytics-controller');
@@ -17,7 +16,6 @@ router.use(orgAuth);
 router.get('/analytics', getAnalytics);
 router.get('/contributions', getContributions);
 router.put('/contributions/custom', updateCustomModel);
-router.post('/members/:memberId/assess', assessMember);
 router.post('/report', createReport);
 router.get('/report', getReport);
 

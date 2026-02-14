@@ -1,8 +1,7 @@
-const { EmploymentType, UnitSize } = require('../../../shared/enums');
+const { EmploymentType } = require('../../../shared/enums');
 const { processIntake } = require('../services/intake-service');
 
 const EMPLOYMENT_VALUES = Object.values(EmploymentType);
-const UNIT_VALUES = Object.values(UnitSize);
 
 function validateIntake(body) {
   const errors = [];
@@ -36,10 +35,6 @@ function validateIntake(body) {
     errors.push({ field: 'employmentType', message: 'Invalid employment type' });
   }
 
-  if (!UNIT_VALUES.includes(body.unitPreference)) {
-    errors.push({ field: 'unitPreference', message: 'Invalid unit size preference' });
-  }
-
   if (body.consent !== true) {
     errors.push({ field: 'consent', message: 'Consent is required to proceed' });
   }
@@ -64,7 +59,6 @@ async function handleIntake(req, res) {
     zip: req.body.zip.trim(),
     monthlyIncome: Number(req.body.monthlyIncome),
     employmentType: req.body.employmentType,
-    unitSize: req.body.unitPreference,
   };
 
   const result = await processIntake(req.params.intakeToken, memberData);

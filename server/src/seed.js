@@ -1,7 +1,7 @@
 /**
  * Seed script for CommonGround hackathon demo.
- * Creates 3 projects with 12 total members representing varied Bay Area co-op scenarios.
- * Computes group analytics and contribution models, then generates Gemini AI insights.
+ * Creates 3 groups with 12 total applicants representing varied Bay Area rental scenarios.
+ * Computes group analytics and split models, then generates Gemini AI insights.
  *
  * Run:  node src/seed.js
  * Env:  MONGODB_URI (required), GEMINI_API_KEY (optional — skips AI if missing)
@@ -14,28 +14,32 @@ const { computeContributions } = require('./services/contribution-service');
 const gemini = require('./wrappers/gemini-wrapper');
 
 const DAY = 86400000;
-const DEMO_TOKENS = ['demo-student-coop', 'demo-oakland-hills', 'demo-eastbay-family', 'demo-sunset-ridge'];
+const GEMINI_DELAY_MS = 6000; // delay between Gemini calls to stay under free-tier rate limits
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const MAX_RETRIES = 4;
+const DEMO_TOKENS = ['demo-irving-st', 'demo-fruitvale', 'demo-clement-st'];
+const LEGACY_TOKENS = ['demo-student-coop', 'demo-oakland-hills', 'demo-eastbay-family', 'demo-sunset-ridge'];
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// Project 1 — Sunset District Student Co-op
+// Group 1 — 412 Irving St — 4BR Apartment
 // ═══════════════════════════════════════════════════════════════════════════════
-// 4 college students renting a 4BR apartment in SF's Sunset District.
-// Monthly cost: $4,800.  Group DTI: 32.8% (healthy).
+// 4 friends applying to rent a 4BR in the Sunset District, SF.
+// Monthly cost: $4,800.
 //
-// Key demo stories:
-//   - Sam is the sole critical dependency (51.3% DTI without him).
-//   - Equal split pushes Mei (37.5%) and Yuki (35.3%) over the 30% threshold.
-//   - Proportional keeps everyone at exactly 27.4% — under threshold.
-//   - Income diversity: 3 types / 4 members = 0.75
+// Key stories:
+//   - Sam is the financial anchor — remove him and the group can't afford it.
+//   - Mei has weakest profile but adds income diversity (gig).
+//   - Even split ($1,200 each) is 37.5% of Mei's income but only 17.6% of Sam's.
+//   - Income-based split is much fairer.
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function buildStudentProject() {
+function buildIrvingStreet() {
   const members = [
     {
       _id: new ObjectId(),
       firstName: 'Mei',
       lastName: 'Chen',
-      dateOfBirth: '2002-04-15',
+      dateOfBirth: '2000-04-15',
       ssn: '666-28-3370',
       street: '1842 Irving St',
       city: 'San Francisco',
@@ -43,154 +47,151 @@ function buildStudentProject() {
       zip: '94122',
       monthlyIncome: 3200,
       employmentType: 'gig',
-      unitSize: 'studio',
       credit: {
         status: 'complete',
-        score: 635,
-        totalDebt: 3200,
-        monthlyObligations: 120,
-        openTradelinesCount: 2,
-        paymentHistoryPercentage: 88,
+        score: 640,
+        totalDebt: 4200,
+        monthlyObligations: 280,
+        paymentHistoryPercentage: 89,
         delinquencyCount: 1,
         publicRecordsCount: 0,
+        openTradelinesCount: 3,
         tradelines: [
-          { creditorName: 'Capital One', accountType: 'Credit Card', balance: 2100, monthlyPayment: 65, status: 'Open', dateOpened: '2023-01-20' },
-          { creditorName: 'Afterpay', accountType: 'Installment Loan', balance: 1100, monthlyPayment: 55, status: 'Open', dateOpened: '2025-08-10' },
+          { creditor: 'Discover', type: 'Credit Card', balance: 1800, monthlyPayment: 80 },
+          { creditor: 'Affirm', type: 'Installment Loan', balance: 1200, monthlyPayment: 100 },
+          { creditor: 'Apple Card', type: 'Credit Card', balance: 1200, monthlyPayment: 100 },
         ],
       },
       criminal: { status: 'complete', records: [] },
       eviction: { status: 'complete', records: [] },
-      identity: { status: 'complete', cviScore: 62, verificationStatus: 'verified' },
-      personalDTI: 0.0375,
-      disposableIncome: 3080,
+      identity: { status: 'complete', cviScore: 72, verificationStatus: 'verified' },
+      personalDTI: 0.0875,
+      disposableIncome: 2920,
       aiAssessment: null,
       orgStatus: 'approved',
-      orgNotes: 'Part-time barista near SFSU. Thin credit file but manageable debt.',
-      dateSubmitted: new Date(Date.now() - 7 * DAY),
+      orgNotes: 'DoorDash + freelance design. Thin credit file but no red flags.',
+      dateSubmitted: new Date(Date.now() - 8 * DAY),
     },
     {
       _id: new ObjectId(),
       firstName: 'Alex',
       lastName: 'Torres',
-      dateOfBirth: '2000-11-08',
-      ssn: '666-20-7378',
+      dateOfBirth: '1999-11-22',
+      ssn: '666-35-4412',
       street: '520 Judah St',
       city: 'San Francisco',
       state: 'CA',
       zip: '94122',
       monthlyIncome: 4100,
       employmentType: 'salaried',
-      unitSize: '1br',
       credit: {
         status: 'complete',
         score: 710,
-        totalDebt: 22000,
-        monthlyObligations: 380,
-        openTradelinesCount: 3,
+        totalDebt: 8500,
+        monthlyObligations: 450,
         paymentHistoryPercentage: 96,
         delinquencyCount: 0,
         publicRecordsCount: 0,
+        openTradelinesCount: 4,
         tradelines: [
-          { creditorName: 'Great Lakes', accountType: 'Student Loan', balance: 18500, monthlyPayment: 250, status: 'Open', dateOpened: '2019-08-15' },
-          { creditorName: 'Chase', accountType: 'Credit Card', balance: 2200, monthlyPayment: 80, status: 'Open', dateOpened: '2021-03-10' },
-          { creditorName: 'Citi', accountType: 'Credit Card', balance: 1300, monthlyPayment: 50, status: 'Open', dateOpened: '2022-06-01' },
+          { creditor: 'Chase', type: 'Credit Card', balance: 2800, monthlyPayment: 120 },
+          { creditor: 'SoFi', type: 'Student Loan', balance: 4200, monthlyPayment: 230 },
+          { creditor: 'Capital One', type: 'Credit Card', balance: 1500, monthlyPayment: 100 },
         ],
       },
       criminal: { status: 'complete', records: [] },
       eviction: { status: 'complete', records: [] },
       identity: { status: 'complete', cviScore: 85, verificationStatus: 'verified' },
-      personalDTI: 0.0927,
-      disposableIncome: 3720,
+      personalDTI: 0.1098,
+      disposableIncome: 3650,
       aiAssessment: null,
       orgStatus: 'approved',
-      orgNotes: 'Graduate TA with research stipend. Student loans but solid payment history.',
-      dateSubmitted: new Date(Date.now() - 6 * DAY),
+      orgNotes: 'Junior analyst at a startup. Stable salaried income.',
+      dateSubmitted: new Date(Date.now() - 7 * DAY),
     },
     {
       _id: new ObjectId(),
       firstName: 'Sam',
       lastName: 'Okafor',
-      dateOfBirth: '2001-06-22',
-      ssn: '666-32-8649',
-      street: '3150 Noriega St',
+      dateOfBirth: '1997-06-10',
+      ssn: '666-42-8891',
+      street: '350 Noriega St',
       city: 'San Francisco',
       state: 'CA',
       zip: '94122',
       monthlyIncome: 6800,
       employmentType: 'salaried',
-      unitSize: '1br',
       credit: {
         status: 'complete',
-        score: 690,
-        totalDebt: 8500,
-        monthlyObligations: 250,
-        openTradelinesCount: 2,
-        paymentHistoryPercentage: 93,
+        score: 745,
+        totalDebt: 14200,
+        monthlyObligations: 620,
+        paymentHistoryPercentage: 98,
         delinquencyCount: 0,
         publicRecordsCount: 0,
+        openTradelinesCount: 5,
         tradelines: [
-          { creditorName: 'Honda Financial', accountType: 'Auto Loan', balance: 6200, monthlyPayment: 185, status: 'Open', dateOpened: '2024-02-01' },
-          { creditorName: 'Discover', accountType: 'Credit Card', balance: 2300, monthlyPayment: 65, status: 'Open', dateOpened: '2022-09-15' },
+          { creditor: 'Citi', type: 'Credit Card', balance: 3200, monthlyPayment: 140 },
+          { creditor: 'Navient', type: 'Student Loan', balance: 8500, monthlyPayment: 320 },
+          { creditor: 'Amex', type: 'Credit Card', balance: 2500, monthlyPayment: 160 },
         ],
       },
       criminal: { status: 'complete', records: [] },
       eviction: { status: 'complete', records: [] },
-      identity: { status: 'complete', cviScore: 74, verificationStatus: 'verified' },
-      personalDTI: 0.0368,
-      disposableIncome: 6550,
+      identity: { status: 'complete', cviScore: 91, verificationStatus: 'verified' },
+      personalDTI: 0.0912,
+      disposableIncome: 6180,
       aiAssessment: null,
       orgStatus: 'approved',
-      orgNotes: 'Software intern at major tech company. Highest earner in group.',
-      dateSubmitted: new Date(Date.now() - 6 * DAY),
+      orgNotes: 'Software engineer. Strong anchor for the group.',
+      dateSubmitted: new Date(Date.now() - 9 * DAY),
     },
     {
       _id: new ObjectId(),
       firstName: 'Yuki',
       lastName: 'Tanaka',
-      dateOfBirth: '2003-02-14',
-      ssn: '666-58-2109',
-      street: '2280 Taraval St',
+      dateOfBirth: '2001-01-30',
+      ssn: '666-19-7753',
+      street: '2340 Taraval St',
       city: 'San Francisco',
       state: 'CA',
       zip: '94116',
       monthlyIncome: 3400,
       employmentType: 'freelance',
-      unitSize: 'studio',
       credit: {
         status: 'complete',
-        score: 658,
-        totalDebt: 5800,
-        monthlyObligations: 190,
-        openTradelinesCount: 3,
-        paymentHistoryPercentage: 85,
-        delinquencyCount: 2,
+        score: 665,
+        totalDebt: 2800,
+        monthlyObligations: 180,
+        paymentHistoryPercentage: 92,
+        delinquencyCount: 0,
         publicRecordsCount: 0,
+        openTradelinesCount: 2,
         tradelines: [
-          { creditorName: 'Best Buy', accountType: 'Credit Card', balance: 1800, monthlyPayment: 60, status: 'Open', dateOpened: '2023-11-20' },
-          { creditorName: 'PayPal Credit', accountType: 'Credit Card', balance: 2400, monthlyPayment: 80, status: 'Open', dateOpened: '2024-03-05' },
-          { creditorName: 'Affirm', accountType: 'Installment Loan', balance: 1600, monthlyPayment: 50, status: 'Open', dateOpened: '2025-06-12' },
+          { creditor: 'Wells Fargo', type: 'Credit Card', balance: 1600, monthlyPayment: 80 },
+          { creditor: 'PayPal Credit', type: 'Credit Card', balance: 1200, monthlyPayment: 100 },
         ],
       },
       criminal: { status: 'complete', records: [] },
       eviction: { status: 'complete', records: [] },
       identity: { status: 'complete', cviScore: 68, verificationStatus: 'verified' },
-      personalDTI: 0.0559,
-      disposableIncome: 3210,
+      personalDTI: 0.0529,
+      disposableIncome: 3220,
       aiAssessment: null,
       orgStatus: 'approved',
-      orgNotes: 'Freelance graphic designer. Variable income but growing client base.',
-      dateSubmitted: new Date(Date.now() - 5 * DAY),
+      orgNotes: 'Freelance photographer. Variable income but low debt.',
+      dateSubmitted: new Date(Date.now() - 6 * DAY),
     },
   ];
 
   return {
     orgId: 'org-001',
-    name: 'Sunset District Student Co-op',
-    priceRange: { low: 650000, high: 850000 },
+    name: '412 Irving St — 4BR Apartment',
+    priceRange: null,
     estimatedMonthlyCost: 4800,
     location: { city: 'San Francisco', state: 'CA' },
     expectedMemberCount: 4,
-    intakeLinkToken: 'demo-student-coop',
+    intakeLinkToken: 'demo-irving-st',
     status: 'assessment',
     members,
     groupMetrics: null,
@@ -204,400 +205,138 @@ function buildStudentProject() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// Project 2 — Oakland Hills Couple + Friends Co-op
+// Group 2 — 1847 Fruitvale Ave — 3BR House
 // ═══════════════════════════════════════════════════════════════════════════════
-// 3 households purchasing a multi-unit property in the Oakland Hills.
-// Monthly cost: $8,500.  Group DTI: 34.3% (healthy).
+// A family where 3 adult earners contribute to rent a house in Oakland.
+// Monthly cost: $3,600.
 //
-// Key demo stories:
-//   - Anderson is the anchor (59.5% DTI without them — massive critical dependency).
-//   - Garcia removal is also critical (44.9%) — two of three critical.
-//   - Park-Johnson can leave and group survives (41.8%).
-//   - Unit-based model: 2 × 2br + 1 × 1br shows couples paying more for larger units.
-//   - Highest combined income ($32K/mo) and borrowing power of all 3 projects.
+// Key stories:
+//   - Marco has good income but high auto loan eats into breathing room.
+//   - Sofia has low income and thin credit but almost no debt.
+//   - Gloria is the most stable. Balanced split works well here.
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function buildOaklandProject() {
+function buildFruitvaleHouse() {
   const members = [
     {
       _id: new ObjectId(),
-      firstName: 'James',
-      lastName: 'Anderson',
-      dateOfBirth: '1985-09-03',
-      ssn: '666-41-5520',
-      street: '6820 Skyline Blvd',
+      firstName: 'Gloria',
+      lastName: 'Reyes',
+      dateOfBirth: '1978-03-14',
+      ssn: '666-50-2241',
+      street: '1200 Fruitvale Ave',
       city: 'Oakland',
       state: 'CA',
-      zip: '94611',
-      monthlyIncome: 15000,
+      zip: '94601',
+      monthlyIncome: 3800,
       employmentType: 'government',
-      unitSize: '2br',
       credit: {
         status: 'complete',
-        score: 762,
-        totalDebt: 28000,
-        monthlyObligations: 850,
-        openTradelinesCount: 5,
-        paymentHistoryPercentage: 99,
+        score: 720,
+        totalDebt: 6800,
+        monthlyObligations: 340,
+        paymentHistoryPercentage: 97,
         delinquencyCount: 0,
         publicRecordsCount: 0,
+        openTradelinesCount: 4,
         tradelines: [
-          { creditorName: 'Toyota Financial', accountType: 'Auto Loan', balance: 14000, monthlyPayment: 420, status: 'Open', dateOpened: '2023-06-15' },
-          { creditorName: 'Wells Fargo', accountType: 'Credit Card', balance: 3500, monthlyPayment: 120, status: 'Open', dateOpened: '2016-03-01' },
-          { creditorName: 'Amex Blue', accountType: 'Credit Card', balance: 2800, monthlyPayment: 95, status: 'Open', dateOpened: '2018-09-20' },
-          { creditorName: 'Costco Citi', accountType: 'Credit Card', balance: 1200, monthlyPayment: 40, status: 'Open', dateOpened: '2020-01-10' },
-          { creditorName: 'SoFi', accountType: 'Personal Loan', balance: 6500, monthlyPayment: 175, status: 'Open', dateOpened: '2024-04-01' },
-        ],
-      },
-      criminal: { status: 'complete', records: [] },
-      eviction: { status: 'complete', records: [] },
-      identity: { status: 'complete', cviScore: 92, verificationStatus: 'verified' },
-      personalDTI: 0.0567,
-      disposableIncome: 14150,
-      aiAssessment: null,
-      orgStatus: 'approved',
-      orgNotes: 'Both partners are city employees. Very stable household income. Group anchor.',
-      dateSubmitted: new Date(Date.now() - 12 * DAY),
-    },
-    {
-      _id: new ObjectId(),
-      firstName: 'Sofia',
-      lastName: 'Garcia',
-      dateOfBirth: '1988-03-17',
-      ssn: '666-73-8841',
-      street: '4510 Montclair Ave',
-      city: 'Oakland',
-      state: 'CA',
-      zip: '94611',
-      monthlyIncome: 10000,
-      employmentType: 'salaried',
-      unitSize: '2br',
-      credit: {
-        status: 'complete',
-        score: 725,
-        totalDebt: 42000,
-        monthlyObligations: 1100,
-        openTradelinesCount: 5,
-        paymentHistoryPercentage: 95,
-        delinquencyCount: 1,
-        publicRecordsCount: 0,
-        tradelines: [
-          { creditorName: 'Navient', accountType: 'Student Loan', balance: 22000, monthlyPayment: 380, status: 'Open', dateOpened: '2010-08-01' },
-          { creditorName: 'Ford Credit', accountType: 'Auto Loan', balance: 12500, monthlyPayment: 400, status: 'Open', dateOpened: '2024-01-15' },
-          { creditorName: 'Chase Sapphire', accountType: 'Credit Card', balance: 4200, monthlyPayment: 170, status: 'Open', dateOpened: '2017-05-10' },
-          { creditorName: 'Target RedCard', accountType: 'Credit Card', balance: 1800, monthlyPayment: 80, status: 'Open', dateOpened: '2021-11-20' },
-          { creditorName: 'Apple Card', accountType: 'Credit Card', balance: 1500, monthlyPayment: 70, status: 'Open', dateOpened: '2022-07-01' },
+          { creditor: 'Bank of America', type: 'Credit Card', balance: 2200, monthlyPayment: 100 },
+          { creditor: 'Toyota Financial', type: 'Auto Loan', balance: 4600, monthlyPayment: 240 },
         ],
       },
       criminal: { status: 'complete', records: [] },
       eviction: { status: 'complete', records: [] },
       identity: { status: 'complete', cviScore: 88, verificationStatus: 'verified' },
-      personalDTI: 0.1100,
-      disposableIncome: 8900,
+      personalDTI: 0.0895,
+      disposableIncome: 3460,
       aiAssessment: null,
       orgStatus: 'approved',
-      orgNotes: 'Both partners work in tech. High debt but strong combined income.',
-      dateSubmitted: new Date(Date.now() - 11 * DAY),
-    },
-    {
-      _id: new ObjectId(),
-      firstName: 'Daniel',
-      lastName: 'Park-Johnson',
-      dateOfBirth: '1990-12-05',
-      ssn: '666-62-4437',
-      street: '3880 Park Blvd',
-      city: 'Oakland',
-      state: 'CA',
-      zip: '94602',
-      monthlyIncome: 7000,
-      employmentType: 'freelance',
-      unitSize: '1br',
-      credit: {
-        status: 'complete',
-        score: 648,
-        totalDebt: 15000,
-        monthlyObligations: 520,
-        openTradelinesCount: 3,
-        paymentHistoryPercentage: 87,
-        delinquencyCount: 3,
-        publicRecordsCount: 0,
-        tradelines: [
-          { creditorName: 'LendingClub', accountType: 'Personal Loan', balance: 8500, monthlyPayment: 280, status: 'Open', dateOpened: '2023-10-20' },
-          { creditorName: 'Bank of America', accountType: 'Credit Card', balance: 3800, monthlyPayment: 130, status: 'Open', dateOpened: '2019-04-15' },
-          { creditorName: 'Venmo Credit Card', accountType: 'Credit Card', balance: 2700, monthlyPayment: 110, status: 'Open', dateOpened: '2024-06-01' },
-        ],
-      },
-      criminal: { status: 'complete', records: [] },
-      eviction: { status: 'complete', records: [] },
-      identity: { status: 'complete', cviScore: 71, verificationStatus: 'verified' },
-      personalDTI: 0.0743,
-      disposableIncome: 6480,
-      aiAssessment: null,
-      orgStatus: 'approved',
-      orgNotes: 'Freelance couple. Income variable but trending up. Weakest credit in group.',
-      dateSubmitted: new Date(Date.now() - 9 * DAY),
-    },
-  ];
-
-  return {
-    orgId: 'org-001',
-    name: 'Oakland Hills Co-op',
-    priceRange: { low: 1100000, high: 1300000 },
-    estimatedMonthlyCost: 8500,
-    location: { city: 'Oakland', state: 'CA' },
-    expectedMemberCount: 3,
-    intakeLinkToken: 'demo-oakland-hills',
-    status: 'modeling',
-    members,
-    groupMetrics: null,
-    customContributionModel: null,
-    readinessReport: null,
-    groupAssessment: null,
-    modelAnalysis: null,
-    dateCreated: new Date(Date.now() - 14 * DAY),
-    dateUpdated: new Date(),
-  };
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// Project 3 — East Bay Family Housing Co-op
-// ═══════════════════════════════════════════════════════════════════════════════
-// 5 low-to-moderate income families forming a limited equity co-op.
-// Monthly cost: $6,000.  Group DTI: 37.5% (acceptable).
-//
-// Key demo stories:
-//   - 3 of 5 members are critical dependencies (Rosa, Tran, Carmen) — fragile group.
-//   - James and Andre are non-critical — group survives losing either.
-//   - Rosa has the weakest credit (580) and a public record (collections).
-//   - James has a criminal misdemeanor record (demo: tool doesn't auto-disqualify).
-//   - Carmen has an old eviction (demo: facts for org interpretation).
-//   - Hybrid model works best: balances affordability across varied incomes.
-//   - Most compelling scenario for demo: complex group with real tensions.
-// ═══════════════════════════════════════════════════════════════════════════════
-
-function buildEastBayProject() {
-  const members = [
-    {
-      _id: new ObjectId(),
-      firstName: 'Rosa',
-      lastName: 'Herrera',
-      dateOfBirth: '1978-08-21',
-      ssn: '666-35-9912',
-      street: '1420 International Blvd',
-      city: 'Oakland',
-      state: 'CA',
-      zip: '94601',
-      monthlyIncome: 4500,
-      employmentType: 'salaried',
-      unitSize: '2br',
-      credit: {
-        status: 'complete',
-        score: 580,
-        totalDebt: 12000,
-        monthlyObligations: 350,
-        openTradelinesCount: 3,
-        paymentHistoryPercentage: 82,
-        delinquencyCount: 4,
-        publicRecordsCount: 1,
-        tradelines: [
-          { creditorName: 'Progressive Finance', accountType: 'Personal Loan', balance: 5500, monthlyPayment: 175, status: 'Open', dateOpened: '2024-01-10' },
-          { creditorName: 'Capital One Platinum', accountType: 'Credit Card', balance: 3800, monthlyPayment: 110, status: 'Open', dateOpened: '2020-06-15' },
-          { creditorName: 'JCPenney', accountType: 'Credit Card', balance: 2700, monthlyPayment: 65, status: 'Open', dateOpened: '2022-03-01' },
-        ],
-      },
-      criminal: { status: 'complete', records: [] },
-      eviction: { status: 'complete', records: [] },
-      identity: { status: 'complete', cviScore: 58, verificationStatus: 'verified' },
-      personalDTI: 0.0778,
-      disposableIncome: 4150,
-      aiAssessment: null,
-      orgStatus: 'approved',
-      orgNotes: 'Home health aide. Lowest credit score but committed member. Collections item from 2019 medical bill.',
+      orgNotes: 'City clerk. Very steady paycheck and long employment history.',
       dateSubmitted: new Date(Date.now() - 5 * DAY),
     },
     {
       _id: new ObjectId(),
-      firstName: 'Tran',
-      lastName: 'Nguyen',
-      dateOfBirth: '1985-01-30',
-      ssn: '666-48-7721',
-      street: '2855 Fruitvale Ave',
+      firstName: 'Marco',
+      lastName: 'Reyes',
+      dateOfBirth: '1980-08-22',
+      ssn: '666-50-3318',
+      street: '1200 Fruitvale Ave',
       city: 'Oakland',
       state: 'CA',
       zip: '94601',
-      monthlyIncome: 5200,
+      monthlyIncome: 4200,
       employmentType: 'salaried',
-      unitSize: '2br',
       credit: {
         status: 'complete',
         score: 695,
         totalDebt: 18500,
-        monthlyObligations: 480,
-        openTradelinesCount: 3,
-        paymentHistoryPercentage: 94,
+        monthlyObligations: 780,
+        paymentHistoryPercentage: 91,
         delinquencyCount: 1,
         publicRecordsCount: 0,
+        openTradelinesCount: 5,
         tradelines: [
-          { creditorName: 'Wells Fargo', accountType: 'Personal Loan', balance: 9800, monthlyPayment: 260, status: 'Open', dateOpened: '2023-05-20' },
-          { creditorName: 'Chase Freedom', accountType: 'Credit Card', balance: 3200, monthlyPayment: 110, status: 'Open', dateOpened: '2019-09-10' },
-          { creditorName: 'Amex', accountType: 'Credit Card', balance: 5500, monthlyPayment: 110, status: 'Open', dateOpened: '2021-02-15' },
+          { creditor: 'Ford Motor Credit', type: 'Auto Loan', balance: 12000, monthlyPayment: 480 },
+          { creditor: 'Chase', type: 'Credit Card', balance: 3800, monthlyPayment: 150 },
+          { creditor: 'Best Buy', type: 'Retail Card', balance: 2700, monthlyPayment: 150 },
         ],
       },
       criminal: { status: 'complete', records: [] },
       eviction: { status: 'complete', records: [] },
-      identity: { status: 'complete', cviScore: 81, verificationStatus: 'verified' },
-      personalDTI: 0.0923,
-      disposableIncome: 4720,
+      identity: { status: 'complete', cviScore: 82, verificationStatus: 'verified' },
+      personalDTI: 0.1857,
+      disposableIncome: 3420,
       aiAssessment: null,
       orgStatus: 'approved',
-      orgNotes: 'Restaurant manager. Stable employment, moderate credit.',
+      orgNotes: 'Warehouse manager. High auto loan but should be paid off in 2 years.',
       dateSubmitted: new Date(Date.now() - 5 * DAY),
     },
     {
       _id: new ObjectId(),
-      firstName: 'James',
-      lastName: 'Williams',
-      dateOfBirth: '1972-04-09',
-      ssn: '666-51-3306',
-      street: '980 105th Ave',
+      firstName: 'Sofia',
+      lastName: 'Reyes',
+      dateOfBirth: '2000-12-05',
+      ssn: '666-50-4407',
+      street: '430 E 14th St',
       city: 'Oakland',
       state: 'CA',
-      zip: '94603',
-      monthlyIncome: 2800,
-      employmentType: 'gig',
-      unitSize: '1br',
+      zip: '94601',
+      monthlyIncome: 2600,
+      employmentType: 'freelance',
       credit: {
         status: 'complete',
-        score: 605,
-        totalDebt: 6200,
-        monthlyObligations: 180,
+        score: 610,
+        totalDebt: 1800,
+        monthlyObligations: 150,
+        paymentHistoryPercentage: 85,
+        delinquencyCount: 1,
+        publicRecordsCount: 0,
         openTradelinesCount: 2,
-        paymentHistoryPercentage: 79,
-        delinquencyCount: 5,
-        publicRecordsCount: 0,
         tradelines: [
-          { creditorName: 'Affirm', accountType: 'Installment Loan', balance: 2800, monthlyPayment: 90, status: 'Open', dateOpened: '2025-02-01' },
-          { creditorName: 'Credit One Bank', accountType: 'Credit Card', balance: 3400, monthlyPayment: 90, status: 'Open', dateOpened: '2023-07-15' },
-        ],
-      },
-      criminal: {
-        status: 'complete',
-        records: [
-          {
-            offense: 'Misdemeanor — Trespassing',
-            date: '2015-03-22',
-            jurisdiction: 'Alameda County',
-            disposition: 'Completed probation',
-          },
-        ],
-      },
-      eviction: { status: 'complete', records: [] },
-      identity: { status: 'complete', cviScore: 45, verificationStatus: 'verified' },
-      personalDTI: 0.0643,
-      disposableIncome: 2620,
-      aiAssessment: null,
-      orgStatus: 'approved',
-      orgNotes: 'Part-time security guard. Old misdemeanor — org reviewed and approved. Lowest income in group.',
-      dateSubmitted: new Date(Date.now() - 4 * DAY),
-    },
-    {
-      _id: new ObjectId(),
-      firstName: 'Andre',
-      lastName: 'Davis',
-      dateOfBirth: '1982-07-16',
-      ssn: '666-66-8854',
-      street: '3300 Seminary Ave',
-      city: 'Oakland',
-      state: 'CA',
-      zip: '94605',
-      monthlyIncome: 3800,
-      employmentType: 'government',
-      unitSize: '2br',
-      credit: {
-        status: 'complete',
-        score: 715,
-        totalDebt: 24000,
-        monthlyObligations: 550,
-        openTradelinesCount: 4,
-        paymentHistoryPercentage: 97,
-        delinquencyCount: 0,
-        publicRecordsCount: 0,
-        tradelines: [
-          { creditorName: 'Nelnet', accountType: 'Student Loan', balance: 14500, monthlyPayment: 220, status: 'Open', dateOpened: '2004-08-15' },
-          { creditorName: 'USAA', accountType: 'Auto Loan', balance: 6500, monthlyPayment: 210, status: 'Open', dateOpened: '2024-03-01' },
-          { creditorName: 'Discover', accountType: 'Credit Card', balance: 2000, monthlyPayment: 75, status: 'Open', dateOpened: '2018-11-10' },
-          { creditorName: 'Navy Federal', accountType: 'Credit Card', balance: 1000, monthlyPayment: 45, status: 'Open', dateOpened: '2020-06-20' },
+          { creditor: 'Discover', type: 'Credit Card', balance: 800, monthlyPayment: 50 },
+          { creditor: 'Klarna', type: 'Installment Loan', balance: 1000, monthlyPayment: 100 },
         ],
       },
       criminal: { status: 'complete', records: [] },
       eviction: { status: 'complete', records: [] },
-      identity: { status: 'complete', cviScore: 89, verificationStatus: 'verified' },
-      personalDTI: 0.1447,
-      disposableIncome: 3250,
+      identity: { status: 'complete', cviScore: 70, verificationStatus: 'verified' },
+      personalDTI: 0.0577,
+      disposableIncome: 2450,
       aiAssessment: null,
       orgStatus: 'approved',
-      orgNotes: 'City bus driver. Excellent payment history. Government stability is an asset.',
+      orgNotes: 'Youngest sibling, just started freelance bookkeeping. Low debt is a plus.',
       dateSubmitted: new Date(Date.now() - 4 * DAY),
-    },
-    {
-      _id: new ObjectId(),
-      firstName: 'Carmen',
-      lastName: 'Martinez',
-      dateOfBirth: '1980-10-28',
-      ssn: '666-79-4410',
-      street: '1650 Seminary Ave',
-      city: 'Oakland',
-      state: 'CA',
-      zip: '94621',
-      monthlyIncome: 5800,
-      employmentType: 'other',
-      unitSize: '3br',
-      credit: {
-        status: 'complete',
-        score: 660,
-        totalDebt: 31000,
-        monthlyObligations: 720,
-        openTradelinesCount: 4,
-        paymentHistoryPercentage: 90,
-        delinquencyCount: 2,
-        publicRecordsCount: 0,
-        tradelines: [
-          { creditorName: 'Bank of America', accountType: 'Business Loan', balance: 18000, monthlyPayment: 380, status: 'Open', dateOpened: '2022-04-10' },
-          { creditorName: 'Toyota Financial', accountType: 'Auto Loan', balance: 8500, monthlyPayment: 240, status: 'Open', dateOpened: '2024-01-20' },
-          { creditorName: 'Chase', accountType: 'Credit Card', balance: 3200, monthlyPayment: 65, status: 'Open', dateOpened: '2019-08-15' },
-          { creditorName: 'Walmart', accountType: 'Credit Card', balance: 1300, monthlyPayment: 35, status: 'Open', dateOpened: '2023-12-01' },
-        ],
-      },
-      criminal: { status: 'complete', records: [] },
-      eviction: {
-        status: 'complete',
-        records: [
-          {
-            date: '2018-06-15',
-            jurisdiction: 'Contra Costa County',
-            type: 'Unlawful detainer',
-            disposition: 'Settled — rent dispute, no fault finding',
-          },
-        ],
-      },
-      identity: { status: 'complete', cviScore: 73, verificationStatus: 'verified' },
-      personalDTI: 0.1241,
-      disposableIncome: 5080,
-      aiAssessment: null,
-      orgStatus: 'approved',
-      orgNotes: 'Owns small daycare business. Old eviction was a rent dispute — settled. Highest earner after Tran.',
-      dateSubmitted: new Date(Date.now() - 3 * DAY),
     },
   ];
 
   return {
     orgId: 'org-001',
-    name: 'East Bay Family Housing Co-op',
-    priceRange: { low: 850000, high: 1050000 },
-    estimatedMonthlyCost: 6000,
+    name: '1847 Fruitvale Ave — 3BR House',
+    priceRange: null,
+    estimatedMonthlyCost: 3600,
     location: { city: 'Oakland', state: 'CA' },
-    expectedMemberCount: 5,
-    intakeLinkToken: 'demo-eastbay-family',
+    expectedMemberCount: 3,
+    intakeLinkToken: 'demo-fruitvale',
     status: 'assessment',
     members,
     groupMetrics: null,
@@ -611,8 +350,245 @@ function buildEastBayProject() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// Group 3 — 2250 Clement St — 5BR Flat
+// ═══════════════════════════════════════════════════════════════════════════════
+// 5 working professionals who found each other through a housing group.
+// Monthly cost: $6,500.
+//
+// Key stories:
+//   - Wide income spread ($3,900 to $8,200). David & Priya carry the weight.
+//   - Andre is weakest: highest DTI, lowest score, gig work.
+//   - Group survives losing Andre but collapses if David leaves.
+//   - Even split at $1,300 is 33% of Andre's income. Income-based is much fairer.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function buildClementFlat() {
+  const members = [
+    {
+      _id: new ObjectId(),
+      firstName: 'David',
+      lastName: 'Park',
+      dateOfBirth: '1992-05-18',
+      ssn: '666-60-1123',
+      street: '890 Geary Blvd',
+      city: 'San Francisco',
+      state: 'CA',
+      zip: '94109',
+      monthlyIncome: 8200,
+      employmentType: 'salaried',
+      credit: {
+        status: 'complete',
+        score: 760,
+        totalDebt: 15000,
+        monthlyObligations: 520,
+        paymentHistoryPercentage: 99,
+        delinquencyCount: 0,
+        publicRecordsCount: 0,
+        openTradelinesCount: 6,
+        tradelines: [
+          { creditor: 'Chase', type: 'Credit Card', balance: 4000, monthlyPayment: 180 },
+          { creditor: 'Navient', type: 'Student Loan', balance: 8000, monthlyPayment: 240 },
+          { creditor: 'Amex', type: 'Credit Card', balance: 3000, monthlyPayment: 100 },
+        ],
+      },
+      criminal: { status: 'complete', records: [] },
+      eviction: { status: 'complete', records: [] },
+      identity: { status: 'complete', cviScore: 93, verificationStatus: 'verified' },
+      personalDTI: 0.0634,
+      disposableIncome: 7680,
+      aiAssessment: null,
+      orgStatus: 'approved',
+      orgNotes: 'Product manager at a tech company. Strong financial anchor.',
+      dateSubmitted: new Date(Date.now() - 6 * DAY),
+    },
+    {
+      _id: new ObjectId(),
+      firstName: 'Keisha',
+      lastName: 'Williams',
+      dateOfBirth: '1994-09-28',
+      ssn: '666-60-2234',
+      street: '1450 Fulton St',
+      city: 'San Francisco',
+      state: 'CA',
+      zip: '94117',
+      monthlyIncome: 5100,
+      employmentType: 'salaried',
+      credit: {
+        status: 'complete',
+        score: 725,
+        totalDebt: 7200,
+        monthlyObligations: 380,
+        paymentHistoryPercentage: 96,
+        delinquencyCount: 0,
+        publicRecordsCount: 0,
+        openTradelinesCount: 4,
+        tradelines: [
+          { creditor: 'Wells Fargo', type: 'Credit Card', balance: 2200, monthlyPayment: 100 },
+          { creditor: 'Great Lakes', type: 'Student Loan', balance: 5000, monthlyPayment: 280 },
+        ],
+      },
+      criminal: { status: 'complete', records: [] },
+      eviction: { status: 'complete', records: [] },
+      identity: { status: 'complete', cviScore: 87, verificationStatus: 'verified' },
+      personalDTI: 0.0745,
+      disposableIncome: 4720,
+      aiAssessment: null,
+      orgStatus: 'approved',
+      orgNotes: 'Registered nurse. Stable income and good credit.',
+      dateSubmitted: new Date(Date.now() - 5 * DAY),
+    },
+    {
+      _id: new ObjectId(),
+      firstName: 'Tomás',
+      lastName: 'Herrera',
+      dateOfBirth: '1990-02-14',
+      ssn: '666-60-3345',
+      street: '3200 Balboa St',
+      city: 'San Francisco',
+      state: 'CA',
+      zip: '94121',
+      monthlyIncome: 4500,
+      employmentType: 'government',
+      credit: {
+        status: 'complete',
+        score: 700,
+        totalDebt: 5500,
+        monthlyObligations: 290,
+        paymentHistoryPercentage: 94,
+        delinquencyCount: 0,
+        publicRecordsCount: 0,
+        openTradelinesCount: 3,
+        tradelines: [
+          { creditor: 'Citi', type: 'Credit Card', balance: 1500, monthlyPayment: 70 },
+          { creditor: 'FedLoan', type: 'Student Loan', balance: 4000, monthlyPayment: 220 },
+        ],
+      },
+      criminal: { status: 'complete', records: [] },
+      eviction: { status: 'complete', records: [] },
+      identity: { status: 'complete', cviScore: 80, verificationStatus: 'verified' },
+      personalDTI: 0.0644,
+      disposableIncome: 4210,
+      aiAssessment: null,
+      orgStatus: 'approved',
+      orgNotes: 'Public school teacher. On PSLF for student loans.',
+      dateSubmitted: new Date(Date.now() - 4 * DAY),
+    },
+    {
+      _id: new ObjectId(),
+      firstName: 'Priya',
+      lastName: 'Sharma',
+      dateOfBirth: '1993-07-03',
+      ssn: '666-60-4456',
+      street: '2100 California St',
+      city: 'San Francisco',
+      state: 'CA',
+      zip: '94115',
+      monthlyIncome: 6300,
+      employmentType: 'salaried',
+      credit: {
+        status: 'complete',
+        score: 735,
+        totalDebt: 9200,
+        monthlyObligations: 410,
+        paymentHistoryPercentage: 97,
+        delinquencyCount: 0,
+        publicRecordsCount: 0,
+        openTradelinesCount: 5,
+        tradelines: [
+          { creditor: 'Chase', type: 'Credit Card', balance: 3200, monthlyPayment: 140 },
+          { creditor: 'Sallie Mae', type: 'Student Loan', balance: 6000, monthlyPayment: 270 },
+        ],
+      },
+      criminal: { status: 'complete', records: [] },
+      eviction: { status: 'complete', records: [] },
+      identity: { status: 'complete', cviScore: 89, verificationStatus: 'verified' },
+      personalDTI: 0.0651,
+      disposableIncome: 5890,
+      aiAssessment: null,
+      orgStatus: 'approved',
+      orgNotes: 'UX designer. Solid financial profile.',
+      dateSubmitted: new Date(Date.now() - 3 * DAY),
+    },
+    {
+      _id: new ObjectId(),
+      firstName: 'Andre',
+      lastName: 'Johnson',
+      dateOfBirth: '1996-11-20',
+      ssn: '666-60-5567',
+      street: '780 Divisadero St',
+      city: 'San Francisco',
+      state: 'CA',
+      zip: '94117',
+      monthlyIncome: 3900,
+      employmentType: 'gig',
+      credit: {
+        status: 'complete',
+        score: 650,
+        totalDebt: 9800,
+        monthlyObligations: 550,
+        paymentHistoryPercentage: 86,
+        delinquencyCount: 2,
+        publicRecordsCount: 0,
+        openTradelinesCount: 4,
+        tradelines: [
+          { creditor: 'Capital One', type: 'Credit Card', balance: 3800, monthlyPayment: 160 },
+          { creditor: 'Upstart', type: 'Personal Loan', balance: 4000, monthlyPayment: 250 },
+          { creditor: 'Afterpay', type: 'Installment Loan', balance: 2000, monthlyPayment: 140 },
+        ],
+      },
+      criminal: { status: 'complete', records: [] },
+      eviction: { status: 'complete', records: [] },
+      identity: { status: 'complete', cviScore: 65, verificationStatus: 'verified' },
+      personalDTI: 0.1410,
+      disposableIncome: 3350,
+      aiAssessment: null,
+      orgStatus: 'approved',
+      orgNotes: 'Rideshare + part-time personal trainer. Weakest financial profile in the group.',
+      dateSubmitted: new Date(Date.now() - 2 * DAY),
+    },
+  ];
+
+  return {
+    orgId: 'org-001',
+    name: '2250 Clement St — 5BR Flat',
+    priceRange: null,
+    estimatedMonthlyCost: 6500,
+    location: { city: 'San Francisco', state: 'CA' },
+    expectedMemberCount: 5,
+    intakeLinkToken: 'demo-clement-st',
+    status: 'assessment',
+    members,
+    groupMetrics: null,
+    customContributionModel: null,
+    readinessReport: null,
+    groupAssessment: null,
+    modelAnalysis: null,
+    dateCreated: new Date(Date.now() - 8 * DAY),
+    dateUpdated: new Date(),
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // Gemini AI insight generation
 // ═══════════════════════════════════════════════════════════════════════════════
+
+async function callWithRetry(fn, label) {
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    const result = await fn();
+    if (result.success) return result;
+
+    // Check for 429 rate limit and extract retry delay
+    const match429 = result.error?.match(/429/);
+    const retryMatch = result.error?.match(/retry in (\d+(?:\.\d+)?)s/i);
+    if (match429 && attempt < MAX_RETRIES) {
+      const waitSec = retryMatch ? Math.ceil(parseFloat(retryMatch[1])) + 2 : 30 * (attempt + 1);
+      process.stdout.write(`    ${label} rate-limited, waiting ${waitSec}s (attempt ${attempt + 1}/${MAX_RETRIES})...\n`);
+      await sleep(waitSec * 1000);
+      continue;
+    }
+    return result;
+  }
+}
 
 async function generateInsights(db, projectId, project) {
   if (!process.env.GEMINI_API_KEY) {
@@ -622,39 +598,36 @@ async function generateInsights(db, projectId, project) {
 
   const members = project.members;
 
-  // 1. Member assessments (in parallel)
-  console.log(`  Generating ${members.length} member assessments...`);
-  const assessmentResults = await Promise.allSettled(
-    members.map((m) =>
-      gemini.assessMember({
-        firstName: m.firstName,
-        monthlyIncome: m.monthlyIncome,
-        employmentType: m.employmentType,
-        creditScore: m.credit.score,
-        totalDebt: m.credit.totalDebt,
-        monthlyObligations: m.credit.monthlyObligations,
-        personalDTI: m.personalDTI,
-        paymentHistoryPercentage: m.credit.paymentHistoryPercentage,
-        delinquencyCount: m.credit.delinquencyCount,
-        publicRecordsCount: m.credit.publicRecordsCount,
-        openTradelinesCount: m.credit.openTradelinesCount,
-        unitSize: m.unitSize,
-      })
-    )
-  );
-
+  // 1. Individual assessments (sequential with delay to respect rate limits)
+  console.log(`  Generating ${members.length} applicant assessments...`);
   let memberOk = 0;
-  for (let i = 0; i < members.length; i++) {
-    const r = assessmentResults[i];
-    if (r.status === 'fulfilled' && r.value.success) {
+  for (const m of members) {
+    const result = await callWithRetry(() => gemini.assessMember({
+      firstName: m.firstName,
+      monthlyIncome: m.monthlyIncome,
+      employmentType: m.employmentType,
+      creditScore: m.credit.score,
+      totalDebt: m.credit.totalDebt,
+      monthlyObligations: m.credit.monthlyObligations,
+      personalDTI: m.personalDTI,
+      paymentHistoryPercentage: m.credit.paymentHistoryPercentage,
+      delinquencyCount: m.credit.delinquencyCount,
+      publicRecordsCount: m.credit.publicRecordsCount,
+      openTradelinesCount: m.credit.openTradelinesCount,
+    }), m.firstName);
+    if (result.success) {
       await db.collection('projects').updateOne(
-        { _id: new ObjectId(projectId), 'members._id': members[i]._id },
-        { $set: { 'members.$.aiAssessment': r.value.data } }
+        { _id: new ObjectId(projectId), 'members._id': m._id },
+        { $set: { 'members.$.aiAssessment': result.data } }
       );
       memberOk++;
+      process.stdout.write(`    ${m.firstName} ✓\n`);
+    } else {
+      process.stdout.write(`    ${m.firstName} ✗ ${result.error}\n`);
     }
+    await sleep(GEMINI_DELAY_MS);
   }
-  console.log(`  ${memberOk}/${members.length} member assessments stored`);
+  console.log(`  ${memberOk}/${members.length} assessments stored`);
 
   // 2. Group assessment
   const updatedProject = await db.collection('projects').findOne({ _id: new ObjectId(projectId) });
@@ -677,7 +650,7 @@ async function generateInsights(db, projectId, project) {
       personalDTI: m.personalDTI,
     })),
   };
-  const groupResult = await gemini.assessGroup(groupProfile);
+  const groupResult = await callWithRetry(() => gemini.assessGroup(groupProfile), 'Group assessment');
   if (groupResult.success) {
     await db.collection('projects').updateOne(
       { _id: new ObjectId(projectId) },
@@ -687,9 +660,10 @@ async function generateInsights(db, projectId, project) {
   } else {
     console.log(`  Group assessment failed: ${groupResult.error}`);
   }
+  await sleep(GEMINI_DELAY_MS);
 
-  // 3. Model analysis
-  console.log('  Generating model analysis...');
+  // 3. Split model analysis
+  console.log('  Generating split analysis...');
   const contributions = await computeContributions(projectId);
   if (!contributions.error) {
     const modelProfile = {
@@ -698,17 +672,18 @@ async function generateInsights(db, projectId, project) {
       combinedIncome: metrics.combinedIncome,
       groupDTI: metrics.groupDTI,
     };
-    const modelResult = await gemini.analyzeModels(contributions, modelProfile);
+    const modelResult = await callWithRetry(() => gemini.analyzeModels(contributions, modelProfile), 'Split analysis');
     if (modelResult.success) {
       await db.collection('projects').updateOne(
         { _id: new ObjectId(projectId) },
         { $set: { modelAnalysis: modelResult.data } }
       );
-      console.log('  Model analysis stored');
+      console.log('  Split analysis stored');
     } else {
-      console.log(`  Model analysis failed: ${modelResult.error}`);
+      console.log(`  Split analysis failed: ${modelResult.error}`);
     }
   }
+  await sleep(GEMINI_DELAY_MS);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -720,58 +695,143 @@ async function seed() {
   await connect();
   const db = getDb();
 
-  // Clear existing demo projects
+  // Clear existing demo groups (including legacy tokens from old seed data)
   const deleted = await db.collection('projects').deleteMany({
-    intakeLinkToken: { $in: DEMO_TOKENS },
+    intakeLinkToken: { $in: [...DEMO_TOKENS, ...LEGACY_TOKENS] },
   });
   if (deleted.deletedCount > 0) {
-    console.log(`Removed ${deleted.deletedCount} existing demo project(s).`);
+    console.log(`Removed ${deleted.deletedCount} existing demo group(s).`);
   }
 
-  const projectBuilders = [
-    { build: buildStudentProject, label: 'Sunset District Student Co-op' },
-    { build: buildOaklandProject, label: 'Oakland Hills Co-op' },
-    { build: buildEastBayProject, label: 'East Bay Family Housing Co-op' },
+  // Clear existing demo buildings
+  const deletedBuildings = await db.collection('buildings').deleteMany({ orgId: 'org-001' });
+  if (deletedBuildings.deletedCount > 0) {
+    console.log(`Removed ${deletedBuildings.deletedCount} existing demo building(s).`);
+  }
+
+  // ── Create buildings ─────────────────────────────────────────
+  console.log('\n--- Creating buildings ---');
+
+  // Building 1: 412 Irving St — Apartment with 3 units
+  const irvingUnit1A = new ObjectId();
+  const irvingUnit1B = new ObjectId();
+  const irvingUnit2A = new ObjectId();
+  const irvingBuilding = await db.collection('buildings').insertOne({
+    orgId: 'org-001',
+    address: '412 Irving St',
+    city: 'San Francisco',
+    state: 'CA',
+    type: 'apartment',
+    units: [
+      { _id: irvingUnit1A, name: '1A', bedrooms: 2, monthlyCost: 2400 },
+      { _id: irvingUnit1B, name: '1B', bedrooms: 2, monthlyCost: 2400 },
+      { _id: irvingUnit2A, name: '2A', bedrooms: 1, monthlyCost: 1800 },
+    ],
+    dateCreated: new Date(Date.now() - 14 * DAY),
+    dateUpdated: new Date(),
+  });
+  console.log(`  412 Irving St (apartment, 3 units) — ID: ${irvingBuilding.insertedId}`);
+
+  // Building 2: 1847 Fruitvale Ave — House with 1 unit
+  const fruitvaleUnit = new ObjectId();
+  const fruitvaleBuilding = await db.collection('buildings').insertOne({
+    orgId: 'org-001',
+    address: '1847 Fruitvale Ave',
+    city: 'Oakland',
+    state: 'CA',
+    type: 'house',
+    units: [
+      { _id: fruitvaleUnit, name: null, bedrooms: 3, monthlyCost: 3600 },
+    ],
+    dateCreated: new Date(Date.now() - 12 * DAY),
+    dateUpdated: new Date(),
+  });
+  console.log(`  1847 Fruitvale Ave (house, 1 unit) — ID: ${fruitvaleBuilding.insertedId}`);
+
+  // Building 3: 2250 Clement St — Condo with 1 unit
+  const clementUnit = new ObjectId();
+  const clementBuilding = await db.collection('buildings').insertOne({
+    orgId: 'org-001',
+    address: '2250 Clement St',
+    city: 'San Francisco',
+    state: 'CA',
+    type: 'condo',
+    units: [
+      { _id: clementUnit, name: null, bedrooms: 5, monthlyCost: 6500 },
+    ],
+    dateCreated: new Date(Date.now() - 10 * DAY),
+    dateUpdated: new Date(),
+  });
+  console.log(`  2250 Clement St (condo, 1 unit) — ID: ${clementBuilding.insertedId}`);
+
+  // ── Create projects linked to buildings ─────────────────────
+  const buildingLinks = [
+    {
+      build: buildIrvingStreet,
+      label: '412 Irving St — 4BR Apartment',
+      buildingId: irvingBuilding.insertedId.toString(),
+      unitId: irvingUnit1A.toString(),
+      stage: 'review',
+    },
+    {
+      build: buildFruitvaleHouse,
+      label: '1847 Fruitvale Ave — 3BR House',
+      buildingId: fruitvaleBuilding.insertedId.toString(),
+      unitId: fruitvaleUnit.toString(),
+      stage: 'approved',
+    },
+    {
+      build: buildClementFlat,
+      label: '2250 Clement St — 5BR Flat',
+      buildingId: clementBuilding.insertedId.toString(),
+      unitId: clementUnit.toString(),
+      stage: 'negotiating',
+    },
   ];
 
-  for (const { build, label } of projectBuilders) {
+  for (const { build, label, buildingId, unitId, stage } of buildingLinks) {
     console.log(`\n--- ${label} ---`);
     const project = build();
 
-    // Insert project
+    // Add building/unit/stage fields
+    project.buildingId = buildingId;
+    project.unitId = unitId;
+    project.stage = stage;
+
+    // Insert group
     const result = await db.collection('projects').insertOne(project);
     const projectId = result.insertedId.toString();
-    console.log(`  Inserted (ID: ${projectId})`);
+    console.log(`  Inserted (ID: ${projectId}) — stage: ${stage}, buildingId: ${buildingId}`);
 
-    // Compute group analytics (stores on project.groupMetrics)
-    console.log('  Computing group analytics...');
+    // Compute group financials
+    console.log('  Computing group financials...');
     const analytics = await computeGroupAnalytics(projectId);
     if (analytics.error) {
-      console.log(`  Analytics error: ${analytics.message}`);
+      console.log(`  Financials error: ${analytics.message}`);
     } else {
       const dtiPct = (analytics.groupDTI * 100).toFixed(1);
       const critical = analytics.resilienceMatrix.filter((r) => r.isCriticalDependency).length;
       console.log(`  Group DTI: ${dtiPct}% (${analytics.dtiClassification}), ${critical} critical dependencies`);
     }
 
-    // Compute contributions (returned, not stored — they compute on the fly)
-    console.log('  Computing contribution models...');
+    // Compute split models
+    console.log('  Computing split models...');
     const contributions = await computeContributions(projectId);
     if (contributions.error) {
-      console.log(`  Contributions error: ${contributions.message}`);
+      console.log(`  Split error: ${contributions.message}`);
     } else {
       const affordabilityFlags = Object.values(contributions).reduce((count, model) => {
         if (!model?.members) return count;
         return count + model.members.filter((m) => m.exceedsAffordability).length;
       }, 0);
-      console.log(`  4 models computed, ${affordabilityFlags} affordability flags total`);
+      console.log(`  3 models computed, ${affordabilityFlags} affordability flags total`);
     }
 
     // Generate Gemini AI insights
     await generateInsights(db, projectId, project);
 
-    // Print member summary
-    console.log('  Members:');
+    // Print applicant summary
+    console.log('  Applicants:');
     for (const m of project.members) {
       const dti = m.personalDTI ? `${(m.personalDTI * 100).toFixed(1)}%` : 'N/A';
       console.log(
@@ -779,7 +839,7 @@ async function seed() {
       );
     }
 
-    console.log(`  Intake link: /intake/${project.intakeLinkToken}`);
+    console.log(`  Invite link: /intake/${project.intakeLinkToken}`);
     console.log(`  Dashboard:   /dashboard/project/${projectId}`);
   }
 

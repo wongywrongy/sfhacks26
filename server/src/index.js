@@ -5,6 +5,7 @@ const { connect } = require('./db');
 const intakeRoutes = require('./routes/intake-routes');
 const projectRoutes = require('./routes/project-routes');
 const analyticsRoutes = require('./routes/analytics-routes');
+const buildingRoutes = require('./routes/building-routes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -19,6 +20,7 @@ app.get('/api/health', (req, res) => {
 app.use('/api/intake', intakeRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/projects/:projectId', analyticsRoutes);
+app.use('/api/buildings', buildingRoutes);
 
 async function start() {
   await connect();

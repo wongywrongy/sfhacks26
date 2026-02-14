@@ -1,6 +1,6 @@
 const repo = require('../repositories/project-repository');
 const { MemberOrgStatus, CrsCheckStatus, ContributionModelType } = require('../../../shared/enums');
-const { UNIT_SIZE_WEIGHTS, HYBRID_SPLIT, AFFORDABILITY_THRESHOLD } = require('../../../shared/constants');
+const { HYBRID_SPLIT, AFFORDABILITY_THRESHOLD } = require('../../../shared/constants');
 
 function getEligibleMembers(project, excludeIds = []) {
   const excludeSet = new Set(excludeIds.map((id) => id.toString()));
@@ -24,6 +24,8 @@ function memberBreakdown(member, paymentAmount) {
     percentageOfIncome: pct,
     breathingRoom: Math.round(breathingRoom * 100) / 100,
     exceedsAffordability: pct !== null && pct > AFFORDABILITY_THRESHOLD,
+    monthlyIncome: income,
+    monthlyObligations: obligations,
   };
 }
 
@@ -42,18 +44,6 @@ function computeProportional(members, totalCost) {
     members: members.map((m) => {
       const share = combinedIncome > 0 ? (m.monthlyIncome || 0) / combinedIncome : 0;
       return memberBreakdown(m, share * totalCost);
-    }),
-  };
-}
-
-function computeUnitBased(members, totalCost) {
-  const rawWeights = members.map((m) => UNIT_SIZE_WEIGHTS[m.unitSize] || 1.0);
-  const weightSum = rawWeights.reduce((s, w) => s + w, 0);
-  return {
-    type: ContributionModelType.UNIT_BASED,
-    members: members.map((m, i) => {
-      const normalized = weightSum > 0 ? rawWeights[i] / weightSum : 0;
-      return memberBreakdown(m, normalized * totalCost);
     }),
   };
 }
@@ -113,7 +103,6 @@ async function computeContributions(projectId, excludeIds = []) {
   const models = {
     equal: computeEqual(members, totalCost),
     proportional: computeProportional(members, totalCost),
-    unitBased: computeUnitBased(members, totalCost),
     hybrid: computeHybrid(members, totalCost),
   };
 

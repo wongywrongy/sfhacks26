@@ -32,37 +32,62 @@ async function callGemini(prompt, maxTokens = 1024) {
   return text.trim();
 }
 
-// --- 1. Individual Member Assessment ---
+function parseJsonResponse(text) {
+  // Try to extract JSON from ```json ... ``` blocks first
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  const raw = fenced ? fenced[1].trim() : text.trim();
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+// --- System instruction shared across all prompts ---
+
+const SYSTEM_INSTRUCTION = `You are a senior housing financial analyst. Write exactly 2-3 sentences of flowing prose per field.
+
+ABSOLUTE RULES:
+1. NEVER use dashes, bullet points, numbered lists, or line breaks. One continuous paragraph of 2-3 sentences only.
+2. NEVER use these words: suggest, imply, indicate, likely, probably, may, might, could, potentially, appears to, seems to. State facts and consequences directly.
+3. ONLY reference data points provided in the prompt. Never infer employment stability, spending habits, lifestyle, or financial behavior beyond what the numbers show. If a data point is not given, do not mention it.
+4. NEVER restate numbers visible in the dashboard. The manager already sees every stat. Instead, connect numbers to industry thresholds: 30% HUD affordability, 36% DTI caution, 43% lending wall, 670/740 credit tiers.
+5. Every sentence must contain one of: a specific industry benchmark comparison, a concrete lease term or action, or a calculated ratio not shown in the dashboard (like total obligation ratio = housing + debt / income).
+6. Tone: direct, authoritative, factual. No hedging, no speculation, no friendly language.`;
+
+// --- 1. Individual Applicant Assessment ---
 
 async function assessMember(memberSummary) {
   try {
-    const prompt = `You are a financial analyst advising a nonprofit housing organization that helps groups form housing cooperatives. Write a candid 2-3 paragraph assessment of this prospective co-op member's financial profile.
+    const prompt = `${SYSTEM_INSTRUCTION}
 
-Member profile:
-- First name: ${memberSummary.firstName}
-- Monthly income: $${memberSummary.monthlyIncome.toLocaleString()}
-- Employment type: ${memberSummary.employmentType}
-- Credit score: ${memberSummary.creditScore ?? 'unavailable'}
-- Total outstanding debt: $${(memberSummary.totalDebt ?? 0).toLocaleString()}
-- Monthly debt obligations: $${(memberSummary.monthlyObligations ?? 0).toLocaleString()}
-- Personal debt-to-income ratio: ${memberSummary.personalDTI !== null ? (memberSummary.personalDTI * 100).toFixed(1) + '%' : 'unavailable'}
-- On-time payment history: ${memberSummary.paymentHistoryPercentage !== null ? memberSummary.paymentHistoryPercentage + '%' : 'unavailable'}
-- Delinquencies: ${memberSummary.delinquencyCount ?? 0}
-- Public records (bankruptcies, liens): ${memberSummary.publicRecordsCount ?? 0}
-- Open tradelines: ${memberSummary.openTradelinesCount ?? 0}
-- Preferred unit size: ${memberSummary.unitSize}
+Assess ${memberSummary.firstName} for a group rental application. Do NOT restate any numbers. Only reference data points given below. Do NOT infer spending habits, lifestyle, or behavior.
 
-Instructions:
-- Identify specific strengths and risk factors using the actual numbers above.
-- Explain how this member would affect a cooperative group's collective financial position.
-- Be direct and specific. Do not give generic financial advice. Reference the data.
-- Write in plain text with no markdown formatting, no bullet points, no headers.
-- Tone: professional, candid, written for an organizational audience, not for the member.`;
+Data: income $${memberSummary.monthlyIncome.toLocaleString()}, employment ${memberSummary.employmentType}, credit ${memberSummary.creditScore ?? 'unavailable'}, total debt $${(memberSummary.totalDebt ?? 0).toLocaleString()}, monthly obligations $${(memberSummary.monthlyObligations ?? 0).toLocaleString()}, DTI ${memberSummary.personalDTI !== null ? (memberSummary.personalDTI * 100).toFixed(1) + '%' : 'unavailable'}, payment history ${memberSummary.paymentHistoryPercentage !== null ? memberSummary.paymentHistoryPercentage + '%' : 'unavailable'}, delinquencies ${memberSummary.delinquencyCount ?? 0}, public records ${memberSummary.publicRecordsCount ?? 0}, open tradelines ${memberSummary.openTradelinesCount ?? 0}.
+
+Respond with a JSON object in this exact format:
+{
+  "summary": "One factual sentence connecting this person's data to an industry threshold or group impact. No speculation.",
+  "full": "Exactly 2-3 sentences. Calculate total obligation ratio (obligations/income) and compare to 36% caution and 43% lending thresholds. Identify which credit tier (sub-670, 670-740, 740+) affects group weighted average. Recommend a specific lease term or deposit structure based on the data. No dashes, no lists, no banned words."
+}
+
+Return ONLY the JSON object, no other text.`;
 
     const text = await callGemini(prompt, 800);
+    const parsed = parseJsonResponse(text);
+
+    let result;
+    if (parsed && parsed.summary && parsed.full) {
+      result = { summary: parsed.summary, full: parsed.full };
+    } else {
+      // Fallback: first sentence → summary, full text → full
+      const firstSentence = text.match(/^[^.!?]*[.!?]/)?.[0] || text.slice(0, 120);
+      result = { summary: firstSentence.trim(), full: text };
+    }
+
     return {
       success: true,
-      data: { text, generatedAt: new Date(), context: 'individual' },
+      data: { ...result, generatedAt: new Date(), context: 'individual' },
     };
   } catch (err) {
     return { success: false, error: err.message };
@@ -81,43 +106,52 @@ async function assessGroup(groupProfile) {
       `  ${r.displayName}: group DTI without them = ${(r.dtiWithout * 100).toFixed(1)}%${r.isCriticalDependency ? ' [CRITICAL DEPENDENCY]' : ''}`
     ).join('\n');
 
-    const prompt = `You are a financial analyst advising a nonprofit housing organization evaluating whether a group of prospective residents can collectively qualify for a housing cooperative mortgage. Write a thorough narrative analysis of this group's viability.
+    const prompt = `${SYSTEM_INSTRUCTION}
 
-Group overview:
-- Number of members: ${groupProfile.memberCount}
-- Combined monthly income: $${groupProfile.combinedIncome.toLocaleString()}
-- Combined monthly debt obligations: $${groupProfile.combinedObligations.toLocaleString()}
-- Combined outstanding debt: $${groupProfile.combinedDebt.toLocaleString()}
-- Group debt-to-income ratio: ${(groupProfile.groupDTI * 100).toFixed(1)}% (${groupProfile.dtiClassification})
-- Estimated max monthly housing payment: $${groupProfile.maxMonthlyPayment.toLocaleString()}
-- Estimated borrowing power: $${groupProfile.estimatedLoanAmount.toLocaleString()}
-- Income diversity score: ${groupProfile.incomeDiversityScore} (1.0 = all different employment types)
+Analyze this group tenancy application. Do NOT restate any numbers. Only reference data points given below. Do NOT infer behavior, stability, or habits.
 
-Individual member profiles:
-${memberLines}
+Data: ${groupProfile.memberCount} people, combined income $${groupProfile.combinedIncome.toLocaleString()}, combined obligations $${groupProfile.combinedObligations.toLocaleString()}, combined debt $${groupProfile.combinedDebt.toLocaleString()}, group DTI ${(groupProfile.groupDTI * 100).toFixed(1)}% (${groupProfile.dtiClassification}), max payment $${groupProfile.maxMonthlyPayment.toLocaleString()}, buying power $${groupProfile.estimatedLoanAmount.toLocaleString()}, income diversity ${groupProfile.incomeDiversityScore}.
 
-Resilience analysis (what happens if each member leaves):
-${resilienceLines}
+Members: ${memberLines}
 
-Instructions:
-- Analyze the group's collective strengths and weaknesses using the specific numbers.
-- Identify critical dependencies where losing one member threatens the group's viability.
-- Assess correlated income risks if multiple members share the same employment type.
-- Note if the group DTI is healthy, borderline, or risky for lending purposes.
-- Write in plain text with no markdown formatting, no bullet points, no headers.
-- Tone: professional, analytical, written for an organization making investment decisions about this group.`;
+Dependency analysis: ${resilienceLines}
+
+Respond with a JSON object. Each field must be exactly 2-3 sentences of flowing prose. No dashes, no lists, no banned words (suggest, imply, indicate, likely, probably, may, might, could, potentially, appears to, seems to).
+{
+  "overview": "Calculate the group's total obligation ratio with housing and compare to the 43% lending wall. Identify which member's departure causes the largest DTI swing using the dependency data. Recommend a specific lease structure.",
+  "affordability": "Compare the gap between max payment and actual housing cost to industry reserve standards (3-6 months). State whether the operational margin covers a 5-10% cost increase using exact dollar math. Recommend a deposit or reserve requirement.",
+  "incomeDiversity": "Count how many members share the same employment type from the data provided. State whether the diversity score is above or below the 0.6 threshold where correlated job loss becomes a lease risk. Recommend a lease term based on concentration.",
+  "dependencies": "Compare the DTI-without figures from the dependency data to identify asymmetric risk. State which departures keep DTI below 43% and which breach it. Recommend naming the critical member as primary tenant with specific exit notice terms."
+}
+
+Return ONLY the JSON object, no other text.`;
 
     const text = await callGemini(prompt, 1200);
+    const parsed = parseJsonResponse(text);
+
+    let result;
+    if (parsed && parsed.overview) {
+      result = {
+        overview: parsed.overview,
+        affordability: parsed.affordability || '',
+        incomeDiversity: parsed.incomeDiversity || '',
+        dependencies: parsed.dependencies || '',
+      };
+    } else {
+      // Fallback: entire text → overview, rest empty
+      result = { overview: text, affordability: '', incomeDiversity: '', dependencies: '' };
+    }
+
     return {
       success: true,
-      data: { text, generatedAt: new Date(), context: 'group' },
+      data: { ...result, generatedAt: new Date(), context: 'group' },
     };
   } catch (err) {
     return { success: false, error: err.message };
   }
 }
 
-// --- 3. Contribution Model Analysis ---
+// --- 3. Split Model Analysis ---
 
 async function analyzeModels(modelOutputs, groupProfile) {
   try {
@@ -129,58 +163,69 @@ async function analyzeModels(modelOutputs, groupProfile) {
 
     let modelsText = '';
     if (modelOutputs.equal) {
-      modelsText += `Equal split model:\n${formatModel(modelOutputs.equal)}\n\n`;
+      modelsText += `Even split:\n${formatModel(modelOutputs.equal)}\n\n`;
     }
     if (modelOutputs.proportional) {
-      modelsText += `Income-proportional model:\n${formatModel(modelOutputs.proportional)}\n\n`;
-    }
-    if (modelOutputs.unitBased) {
-      modelsText += `Unit-based model:\n${formatModel(modelOutputs.unitBased)}\n\n`;
+      modelsText += `Income-based split:\n${formatModel(modelOutputs.proportional)}\n\n`;
     }
     if (modelOutputs.hybrid) {
-      modelsText += `Hybrid model (50% equal, 50% income-proportional):\n${formatModel(modelOutputs.hybrid)}\n\n`;
+      modelsText += `Balanced split (50% equal, 50% income-based):\n${formatModel(modelOutputs.hybrid)}\n\n`;
     }
     if (modelOutputs.custom) {
       const bal = modelOutputs.custom.balanceStatus;
       const balNote = bal?.balanced ? 'balanced' : bal?.shortfall ? `shortfall of $${bal.shortfall}` : `overage of $${bal.overage}`;
-      modelsText += `Custom model (${balNote}):\n${formatModel(modelOutputs.custom)}\n\n`;
+      modelsText += `Custom split (${balNote}):\n${formatModel(modelOutputs.custom)}\n\n`;
     }
 
-    const prompt = `You are a financial advisor helping a nonprofit housing organization choose a fair way to split $${groupProfile.estimatedMonthlyCost?.toLocaleString() || 'N/A'} in monthly housing costs among ${groupProfile.memberCount} cooperative members. Analyze and compare the following contribution models.
+    const prompt = `${SYSTEM_INSTRUCTION}
 
-Group context:
-- Combined monthly income: $${groupProfile.combinedIncome.toLocaleString()}
-- Group DTI: ${(groupProfile.groupDTI * 100).toFixed(1)}%
+Compare cost-split models for $${groupProfile.estimatedMonthlyCost?.toLocaleString() || 'N/A'}/month among ${groupProfile.memberCount} applicants. Do NOT restate payment amounts or percentages. Only reference data points given below.
+
+Data: combined income $${groupProfile.combinedIncome.toLocaleString()}, group DTI ${(groupProfile.groupDTI * 100).toFixed(1)}%.
 
 ${modelsText}
 
-Instructions:
-- Compare the models by explaining the tradeoffs for this specific group, referencing individual members by name.
-- Note which members are helped or hurt by each model and why.
-- Highlight any affordability concerns where a member's payment exceeds 30% of their income.
-- If a custom model exists, compare it against the formula-driven models and note how the manual adjustments change the fairness picture.
-- Do not recommend a single model. Present the tradeoffs so the organization and group can decide together.
-- Write in plain text with no markdown formatting, no bullet points, no headers.
-- Tone: advisory, balanced, non-prescriptive.`;
+Respond with a JSON object. Each field must be exactly 2-3 sentences of flowing prose. No dashes, no lists, no banned words (suggest, imply, indicate, likely, probably, may, might, could, potentially, appears to, seems to).
+{
+  "distribution": "Calculate each person's total obligation ratio (housing + existing obligations / income) under the active model and identify who crosses the 36% caution or 43% lending threshold. State the dollar difference between the highest and lowest obligation ratios across models. Recommend which model minimizes threshold breaches.",
+  "affordability": "Compare each person's breathing room to the industry standard of 2 months' housing cost as emergency reserve. State the total group breathing room and whether it covers one missed payment from any member. Recommend a specific shared reserve amount based on the weakest position.",
+  "recommendation": "Name the recommended model and state the specific financial reason (fewest threshold breaches, best total obligation distribution, or highest minimum breathing room). State which member benefits most from this model versus even split in exact dollar terms. Provide one concrete negotiation point the manager can use."
+}
+
+Return ONLY the JSON object, no other text.`;
 
     const text = await callGemini(prompt, 1200);
+    const parsed = parseJsonResponse(text);
+
+    let result;
+    if (parsed && (parsed.distribution || parsed.comparison)) {
+      result = {
+        distribution: parsed.distribution || parsed.comparison || '',
+        affordability: parsed.affordability || '',
+        recommendation: parsed.recommendation || '',
+      };
+    } else {
+      // Fallback: entire text → distribution
+      result = { distribution: text, affordability: '', recommendation: '' };
+    }
+
     return {
       success: true,
-      data: { text, generatedAt: new Date(), context: 'models' },
+      data: { ...result, generatedAt: new Date(), context: 'models' },
     };
   } catch (err) {
     return { success: false, error: err.message };
   }
 }
 
-// --- 4. Readiness Report — compiles existing insights, does NOT generate new analysis ---
+// --- 4. Financial Summary — compiles existing insights, does NOT generate new analysis ---
 
 async function compileReport(existingInsights, projectData) {
   try {
     let insightsBlock = '';
 
     if (existingInsights.memberAssessments?.length) {
-      insightsBlock += 'Individual member assessments (already reviewed and validated):\n\n';
+      insightsBlock += 'Individual applicant assessments (already reviewed and validated):\n\n';
       for (const ma of existingInsights.memberAssessments) {
         insightsBlock += `${ma.firstName}:\n${ma.text}\n\n`;
       }
@@ -191,50 +236,53 @@ async function compileReport(existingInsights, projectData) {
     }
 
     if (existingInsights.modelAnalysis) {
-      insightsBlock += `Contribution model analysis (already reviewed and validated):\n${existingInsights.modelAnalysis}\n\n`;
+      insightsBlock += `Split model analysis (already reviewed and validated):\n${existingInsights.modelAnalysis}\n\n`;
     }
 
     const selectedModel = projectData.selectedModel;
     let modelText = '';
     if (selectedModel) {
-      modelText = `Selected contribution model: ${selectedModel.type}\n` +
+      modelText = `Selected split model: ${selectedModel.type}\n` +
         selectedModel.members.map((m) =>
           `  ${m.displayName}: $${m.paymentAmount.toLocaleString()}/month (${m.percentageOfIncome !== null ? (m.percentageOfIncome * 100).toFixed(1) + '% of income' : 'N/A'})`
         ).join('\n');
     }
 
-    const prompt = `You are a financial analyst compiling a professional readiness document for a housing cooperative group preparing to approach lenders.
+    const prompt = `${SYSTEM_INSTRUCTION}
 
-The following insights have already been reviewed and validated by the sponsoring organization. Your job is to compile them into a cohesive document with a brief professional introduction and smooth transitions between sections. Do not add new analysis or contradict the existing insights.
+Compile this financial assessment into a professional summary a property manager can use to evaluate this group of applicants for a rental property. This is a decision document — it should help the manager decide whether to approve, what terms to set, and what to watch for.
 
-Project: ${projectData.projectName}
+The insights below have already been reviewed and validated. Your job is to compile them into one cohesive document with smooth transitions. Preserve the analytical substance of each insight — do not water down risks or recommendations into generic positive language. If an insight identifies a specific risk or recommends a specific action, keep it in the report.
+
+Group: ${projectData.projectName}
 Location: ${projectData.location || 'N/A'}
-Target property price range: $${(projectData.priceLow || 0).toLocaleString()} - $${(projectData.priceHigh || 0).toLocaleString()}
-Estimated monthly housing cost: $${projectData.estimatedMonthlyCost.toLocaleString()}
+Property price range: $${(projectData.priceLow || 0).toLocaleString()} - $${(projectData.priceHigh || 0).toLocaleString()}
+Monthly housing cost: $${projectData.estimatedMonthlyCost.toLocaleString()}
 
-Group financial summary:
-- Members: ${projectData.memberCount}
+Group financial picture:
+- ${projectData.memberCount} applicants
 - Combined monthly income: $${projectData.combinedIncome.toLocaleString()}
 - Combined monthly debt obligations: $${projectData.combinedObligations.toLocaleString()}
-- Group debt-to-income ratio: ${(projectData.groupDTI * 100).toFixed(1)}%
-- Estimated borrowing power: $${projectData.estimatedLoanAmount.toLocaleString()}
-- Income diversity score: ${projectData.incomeDiversityScore}
+- Group DTI: ${(projectData.groupDTI * 100).toFixed(1)}%
+- Buying power: $${projectData.estimatedLoanAmount.toLocaleString()}
+- Income diversity: ${projectData.incomeDiversityScore}
 
 ${modelText}
 
 --- EXISTING VALIDATED INSIGHTS ---
 
-${insightsBlock}
---- END OF INSIGHTS ---
+${insightsBlock}--- END OF INSIGHTS ---
 
 Instructions:
-- Write a brief professional introduction that frames the group and the cooperative structure.
-- Incorporate each of the existing insights above with smooth transitions between them.
-- You may lightly rephrase for flow but do not change the substance or add new financial analysis.
-- Reference specific financial metrics from the group summary to support the narrative.
-- This should read like a polished document prepared by a financial professional for a lending conversation.
-- Write in plain text with no markdown formatting, no bullet points, no headers.
-- Tone: formal, factual, confidence-building.`;
+- Open with a brief framing paragraph, then organize by risk areas and recommendations.
+- Do NOT restate numbers visible in the dashboard. Only use numbers to support analytical points against industry thresholds.
+- Preserve all specific risks, actions, and recommendations from the existing insights.
+- End with a clear "bottom line" with specific approval conditions.
+- Plain text only. No markdown, no bullet points, no dashes, no headers, no numbered lists.
+- Each paragraph is exactly 2-3 sentences. Flowing prose only.
+- NEVER use: suggest, imply, indicate, likely, probably, may, might, could, potentially, appears to, seems to. State facts and consequences directly.
+- Only reference data points that exist in the provided insights. Do not infer behavior, stability, or habits.
+- Tone: direct, authoritative, factual.`;
 
     const text = await callGemini(prompt, 2000);
     return {

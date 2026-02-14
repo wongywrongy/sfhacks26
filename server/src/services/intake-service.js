@@ -109,7 +109,6 @@ async function processCrsCalls(projectId, memberId, memberData) {
       delinquencyCount: creditData.delinquencyCount,
       publicRecordsCount: creditData.publicRecordsCount,
       openTradelinesCount: creditData.openTradelinesCount,
-      unitSize: memberData.unitSize,
     });
 
     if (assessmentResult.success) {
@@ -121,6 +120,12 @@ async function processCrsCalls(projectId, memberId, memberData) {
       );
     }
   }
+
+  // Fire-and-forget: reassess group after individual CRS + AI completes
+  const { reassessGroup } = require('./analytics-service');
+  reassessGroup(projectId).catch((err) =>
+    console.error(`reassessGroup after CRS failed for ${projectId}:`, err.message)
+  );
 }
 
 async function retryCrsChecks(projectId, memberId) {

@@ -1,10 +1,10 @@
 const projectService = require('../services/project-service');
 const repo = require('../repositories/project-repository');
 const { retryCrsChecks } = require('../services/intake-service');
-const { CrsCheckStatus } = require('../../../shared/enums');
+const { CrsCheckStatus, DealStage } = require('../../../shared/enums');
 
 async function createProject(req, res) {
-  const { name, priceLow, priceHigh, estimatedMonthlyCost, city, state, expectedMemberCount } = req.body;
+  const { name, priceLow, priceHigh, estimatedMonthlyCost, city, state, expectedMemberCount, buildingId, unitId } = req.body;
 
   if (!name?.trim()) {
     return res.status(400).json({ error: true, message: 'Project name is required', field: 'name' });
@@ -24,6 +24,8 @@ async function createProject(req, res) {
     city: city || '',
     state: state || '',
     expectedMemberCount,
+    buildingId: buildingId || null,
+    unitId: unitId || null,
   });
 
   res.status(201).json({
@@ -45,6 +47,7 @@ async function getProject(req, res) {
   }
 
   // Strip sensitive data from members before returning
+  const totalIncome = (project.members || []).reduce((s, m) => s + (m.monthlyIncome || 0), 0);
   const members = (project.members || []).map((m) => ({
     _id: m._id,
     firstName: m.firstName,
@@ -52,12 +55,23 @@ async function getProject(req, res) {
     ssnLast4: m.ssn ? m.ssn.slice(-4) : '',
     monthlyIncome: m.monthlyIncome,
     employmentType: m.employmentType,
-    unitSize: m.unitSize,
+    incomeShare: totalIncome > 0 ? m.monthlyIncome / totalIncome : 0,
     creditStatus: m.credit?.status || CrsCheckStatus.PENDING,
+    creditScore: m.credit?.score ?? null,
+    paymentHistoryPct: m.credit?.paymentHistoryPercentage ?? null,
+    delinquencyCount: m.credit?.delinquencyCount ?? 0,
+    openTradelinesCount: m.credit?.openTradelinesCount ?? 0,
+    monthlyObligations: m.credit?.monthlyObligations ?? 0,
+    personalDTI: m.personalDTI,
     criminalStatus: m.criminal?.status || CrsCheckStatus.PENDING,
+    criminalRecordCount: (m.criminal?.records || []).length,
     evictionStatus: m.eviction?.status || CrsCheckStatus.PENDING,
+    evictionRecordCount: (m.eviction?.records || []).length,
     identityStatus: m.identity?.status || CrsCheckStatus.PENDING,
+    cviScore: m.identity?.cviScore ?? null,
     orgStatus: m.orgStatus,
+    aiSummary: m.aiAssessment?.summary || null,
+    aiFull: m.aiAssessment?.full || m.aiAssessment?.text || null,
     dateSubmitted: m.dateSubmitted,
   }));
 
@@ -65,6 +79,7 @@ async function getProject(req, res) {
     _id: project._id,
     name: project.name,
     status: project.status,
+    stage: project.stage || 'screening',
     priceRange: project.priceRange,
     estimatedMonthlyCost: project.estimatedMonthlyCost,
     location: project.location,
@@ -72,6 +87,7 @@ async function getProject(req, res) {
     intakeLinkToken: project.intakeLinkToken,
     members,
     groupMetrics: project.groupMetrics,
+    groupAssessment: project.groupAssessment || null,
     contributionModels: project.contributionModels,
     dateCreated: project.dateCreated,
   });
@@ -81,9 +97,23 @@ async function getProjects(req, res) {
   const projects = await projectService.getProjectsForOrg(req.orgId);
 
   const summaries = projects.map((p) => {
-    const completedMembers = (p.members || []).filter(
+    const members = p.members || [];
+    const completedMembers = members.filter(
       (m) => m.credit?.status === CrsCheckStatus.COMPLETE
     ).length;
+
+    const allChecksComplete = (m) =>
+      m.credit?.status === CrsCheckStatus.COMPLETE &&
+      m.criminal?.status === CrsCheckStatus.COMPLETE &&
+      m.eviction?.status === CrsCheckStatus.COMPLETE &&
+      m.identity?.status === CrsCheckStatus.COMPLETE;
+
+    const hasFailedCheck = (m) =>
+      m.credit?.status === CrsCheckStatus.FAILED ||
+      m.criminal?.status === CrsCheckStatus.FAILED ||
+      m.eviction?.status === CrsCheckStatus.FAILED ||
+      m.identity?.status === CrsCheckStatus.FAILED;
+
     return {
       _id: p._id,
       name: p.name,
@@ -91,6 +121,18 @@ async function getProjects(req, res) {
       membersCompleted: completedMembers,
       expectedMemberCount: p.expectedMemberCount,
       dateCreated: p.dateCreated,
+      activity: {
+        totalMembers: members.length,
+        approved: members.filter((m) => m.orgStatus === 'approved').length,
+        flagged: members.filter((m) => m.orgStatus === 'flagged').length,
+        ineligible: members.filter((m) => m.orgStatus === 'ineligible').length,
+        screeningDone: members.filter(allChecksComplete).length,
+        failedChecks: members.filter(hasFailedCheck).length,
+        recentMembers: [...members]
+          .sort((a, b) => new Date(b.dateSubmitted) - new Date(a.dateSubmitted))
+          .slice(0, 3)
+          .map((m) => ({ name: m.firstName, date: m.dateSubmitted })),
+      },
     };
   });
 
@@ -110,7 +152,6 @@ async function getMember(req, res) {
     ssnLast4: member.ssn?.slice(-4) || '',
     monthlyIncome: member.monthlyIncome,
     employmentType: member.employmentType,
-    unitSize: member.unitSize,
     credit: member.credit?.status === 'complete' ? {
       status: 'complete',
       score: member.credit.score,
@@ -146,6 +187,12 @@ async function updateMemberOrgStatus(req, res) {
 
   await repo.updateMemberStatus(req.params.projectId, req.params.memberId, orgStatus, orgNotes);
   res.json({ success: true });
+
+  // Fire-and-forget: reassess group when member status changes
+  const { reassessGroup } = require('../services/analytics-service');
+  reassessGroup(req.params.projectId).catch((err) =>
+    console.error(`reassessGroup after status change failed:`, err.message)
+  );
 }
 
 async function retryMemberChecks(req, res) {
@@ -157,4 +204,15 @@ async function retryMemberChecks(req, res) {
   }
 }
 
-module.exports = { createProject, getProject, getProjects, getMember, updateMemberOrgStatus, retryMemberChecks };
+async function updateStage(req, res) {
+  const { stage } = req.body;
+  const validStages = Object.values(DealStage);
+  if (!validStages.includes(stage)) {
+    return res.status(400).json({ error: true, message: 'Invalid stage' });
+  }
+
+  await repo.updateProject(req.params.projectId, { stage });
+  res.json({ success: true, stage });
+}
+
+module.exports = { createProject, getProject, getProjects, getMember, updateMemberOrgStatus, retryMemberChecks, updateStage };

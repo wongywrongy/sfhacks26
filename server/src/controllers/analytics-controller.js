@@ -15,34 +15,7 @@ async function getAnalytics(req, res) {
     }
 
     const project = await repo.getProjectById(projectId);
-    const refreshAi = req.query.refreshAi === 'true';
-
-    // Use stored insight if available, only call Gemini on first run or explicit refresh
-    if (!refreshAi && project.groupAssessment) {
-      result.aiAssessment = project.groupAssessment;
-    } else {
-      const members = getEligibleMembers(project);
-      const groupProfile = {
-        ...result,
-        estimatedMonthlyCost: project.estimatedMonthlyCost,
-        members: members.map((m) => ({
-          firstName: m.firstName,
-          monthlyIncome: m.monthlyIncome,
-          employmentType: m.employmentType,
-          creditScore: m.credit?.score ?? null,
-          monthlyObligations: m.credit?.monthlyObligations ?? 0,
-          personalDTI: m.personalDTI,
-        })),
-      };
-
-      const aiResult = await gemini.assessGroup(groupProfile);
-      if (aiResult.success) {
-        await repo.updateProject(projectId, { groupAssessment: aiResult.data });
-        result.aiAssessment = aiResult.data;
-      } else {
-        result.aiAssessment = null;
-      }
-    }
+    result.aiAssessment = project.groupAssessment || null;
 
     res.json(result);
   } catch (err) {
@@ -61,27 +34,8 @@ async function getContributions(req, res) {
 
     // Only attach AI analysis for full calculations (no excludes)
     if (excludeIds.length === 0) {
-      const refreshAi = req.query.refreshAi === 'true';
       const project = await repo.getProjectById(projectId);
-
-      if (!refreshAi && project.modelAnalysis) {
-        result.aiAnalysis = project.modelAnalysis;
-      } else {
-        const groupProfile = {
-          estimatedMonthlyCost: project.estimatedMonthlyCost,
-          memberCount: project.groupMetrics?.memberCount ?? 0,
-          combinedIncome: project.groupMetrics?.combinedIncome ?? 0,
-          groupDTI: project.groupMetrics?.groupDTI ?? 0,
-        };
-
-        const aiResult = await gemini.analyzeModels(result, groupProfile);
-        if (aiResult.success) {
-          await repo.updateProject(projectId, { modelAnalysis: aiResult.data });
-          result.aiAnalysis = aiResult.data;
-        } else {
-          result.aiAnalysis = null;
-        }
-      }
+      result.aiAnalysis = project.modelAnalysis || null;
     }
 
     res.json(result);
@@ -129,11 +83,21 @@ async function createReport(req, res) {
       return res.status(400).json({ error: true, message: 'Run group analytics first before generating a report' });
     }
 
-    // Gather existing AI insights from the project and member records
+    // Gather existing AI insights — use new structured fields with backward compat
+    const groupAss = project.groupAssessment;
+    const groupText = groupAss?.overview
+      ? [groupAss.overview, groupAss.affordability, groupAss.incomeDiversity, groupAss.dependencies].filter(Boolean).join(' ')
+      : groupAss?.text || null;
+
+    const modelAn = project.modelAnalysis;
+    const modelText = (modelAn?.distribution || modelAn?.affordability || modelAn?.recommendation)
+      ? [modelAn.distribution, modelAn.affordability, modelAn.recommendation].filter(Boolean).join(' ')
+      : modelAn?.comparison || modelAn?.text || null;
+
     const existingInsights = {
       memberAssessments: [],
-      groupAssessment: project.groupAssessment?.text || null,
-      modelAnalysis: project.modelAnalysis?.text || null,
+      groupAssessment: groupText,
+      modelAnalysis: modelText,
     };
 
     // Collect member assessments (no PII)
@@ -141,10 +105,11 @@ async function createReport(req, res) {
       (m) => m.credit?.status === 'complete'
     );
     for (const m of eligibleMembers) {
-      if (m.aiAssessment?.text) {
+      const mText = m.aiAssessment?.full || m.aiAssessment?.text;
+      if (mText) {
         existingInsights.memberAssessments.push({
           firstName: m.firstName,
-          text: m.aiAssessment.text,
+          text: mText,
         });
       }
     }

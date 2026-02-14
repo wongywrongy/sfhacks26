@@ -67,6 +67,13 @@ async function computeGroupAnalytics(projectId, interestRate) {
     };
   });
 
+  const memberBreakdown = members.map((m) => ({
+    memberId: m._id.toString(),
+    displayName: m.firstName,
+    monthlyIncome: m.monthlyIncome || 0,
+    monthlyObligations: m.credit?.monthlyObligations || 0,
+  }));
+
   const analytics = {
     combinedIncome,
     combinedDebt,
@@ -75,8 +82,10 @@ async function computeGroupAnalytics(projectId, interestRate) {
     dtiClassification,
     maxMonthlyPayment: Math.round(maxMonthlyPayment * 100) / 100,
     estimatedLoanAmount,
+    estimatedMonthlyCost: monthlyCost,
     incomeDiversityScore,
     memberCount: members.length,
+    memberBreakdown,
     resilienceMatrix,
     computedAt: new Date(),
   };
@@ -86,4 +95,59 @@ async function computeGroupAnalytics(projectId, interestRate) {
   return analytics;
 }
 
-module.exports = { computeGroupAnalytics, getEligibleMembers };
+async function reassessGroup(projectId) {
+  try {
+    const project = await repo.getProjectById(projectId);
+    if (!project) return;
+
+    const members = getEligibleMembers(project);
+    if (members.length < 2) return;
+
+    // Recompute group metrics
+    const analytics = await computeGroupAnalytics(projectId);
+    if (analytics.error) return;
+
+    // Recompute contribution models
+    const { computeContributions } = require('./contribution-service');
+    const contributions = await computeContributions(projectId);
+
+    // Group assessment via Gemini
+    const gemini = require('../wrappers/gemini-wrapper');
+    const groupProfile = {
+      ...analytics,
+      estimatedMonthlyCost: project.estimatedMonthlyCost,
+      members: members.map((m) => ({
+        firstName: m.firstName,
+        monthlyIncome: m.monthlyIncome,
+        employmentType: m.employmentType,
+        creditScore: m.credit?.score ?? null,
+        monthlyObligations: m.credit?.monthlyObligations ?? 0,
+        personalDTI: m.personalDTI,
+      })),
+    };
+
+    const groupResult = await gemini.assessGroup(groupProfile);
+    if (groupResult.success) {
+      await repo.updateProject(projectId, { groupAssessment: groupResult.data });
+    }
+
+    // Model analysis via Gemini
+    if (!contributions.error) {
+      const modelProfile = {
+        estimatedMonthlyCost: project.estimatedMonthlyCost,
+        memberCount: analytics.memberCount,
+        combinedIncome: analytics.combinedIncome,
+        groupDTI: analytics.groupDTI,
+      };
+
+      const modelResult = await gemini.analyzeModels(contributions, modelProfile);
+      if (modelResult.success) {
+        await repo.updateProject(projectId, { modelAnalysis: modelResult.data });
+      }
+    }
+  } catch (err) {
+    console.error(`reassessGroup(${projectId}) failed:`, err.message);
+  }
+}
+
+module.exports = { computeGroupAnalytics, getEligibleMembers, reassessGroup };

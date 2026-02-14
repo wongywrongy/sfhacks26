@@ -13,6 +13,8 @@ async function createProject(orgId, data) {
     city: data.city,
     state: data.state,
     expectedMemberCount: data.expectedMemberCount,
+    buildingId: data.buildingId,
+    unitId: data.unitId,
     intakeLinkToken,
   });
 }
