@@ -30,7 +30,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const MAX_RETRIES = 4;
 const CRS_DELAY_MS = 500;
 
-const DEMO_TOKENS = ['demo-halpert', 'demo-schrute', 'demo-dunder-1a', 'demo-dunder-1b'];
+const DEMO_TOKENS = ['demo-halpert', 'demo-schrute', 'demo-dunder-1a', 'demo-dunder-1b', 'demo-beasley'];
 const LEGACY_TOKENS = ['demo-noriega', 'demo-divisadero', 'demo-irving-1a', 'demo-irving-1b', 'demo-irving-st', 'demo-fruitvale', 'demo-clement-st', 'demo-student-coop', 'demo-oakland-hills', 'demo-eastbay-family', 'demo-sunset-ridge'];
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -99,6 +99,10 @@ const BUILDINGS = [
       { name: '1B', bedrooms: 2, monthlyCost: 2400 },
       { name: '2A', bedrooms: 1, monthlyCost: 1800 },  // vacant
     ],
+  },
+  {
+    name: 'The Beasley Cottage', address: '410 Paper St', city: 'Scranton', state: 'PA', zip: '18505', type: 'house',
+    units: [{ name: null, bedrooms: 2, monthlyCost: 2800 }],
   },
 ];
 
@@ -232,6 +236,37 @@ const DEALS = [
   },
 
   // Unit 2A is intentionally left vacant — no deal created
+
+  // ─── House 4: Approved, clean retired + government ──────
+  {
+    name: 'The Beasley Cottage — 2BR',
+    buildingIdx: 3, unitIdx: 0,
+    estimatedMonthlyCost: 2800,
+    location: { city: 'Scranton', state: 'PA' },
+    expectedMemberCount: 2,
+    intakeLinkToken: 'demo-beasley',
+    stage: 'approved',
+    members: [
+      {
+        firstName: 'Nina', lastName: 'Vasquez', email: 'nina.vasquez@demo.commonground.co',
+        monthlyIncome: 3800, employmentType: 'retired',
+        orgStatus: 'approved',
+        orgNotes: 'Retired school principal. Pension + Social Security. Excellent credit history.',
+        dateSubmitted: new Date(Date.now() - 12 * DAY),
+        creditPersona: CREDIT.BLACK, criminalPersona: CRIMINAL.CONSUMER,
+        evictionPersona: EVICTION.RAY_CLEAN, flexidPersona: FLEXID.GOODLEY, demoCviScore: 44,
+      },
+      {
+        firstName: 'Jaylen', lastName: 'Brooks', email: 'jaylen.brooks@demo.commonground.co',
+        monthlyIncome: 5400, employmentType: 'government',
+        orgStatus: 'approved',
+        orgNotes: 'Public school teacher. Union position with steady salary and benefits.',
+        dateSubmitted: new Date(Date.now() - 11 * DAY),
+        creditPersona: CREDIT.BAMBIKO, criminalPersona: CRIMINAL.BRANDIS,
+        evictionPersona: EVICTION.RAY_CLEAN, flexidPersona: FLEXID.COPE, demoCviScore: 40,
+      },
+    ],
+  },
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -518,6 +553,7 @@ const REPORT_STATUS_BY_TOKEN = {
   'demo-schrute': 'generated',
   'demo-dunder-1a': 'released',
   'demo-dunder-1b': 'released',
+  'demo-beasley': 'released',
 };
 
 async function generateApplicantReports(db, projectId, project, contributions, intakeToken) {
