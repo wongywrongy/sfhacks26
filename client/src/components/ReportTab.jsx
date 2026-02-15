@@ -2,22 +2,102 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { api } from '../api';
 import ReportPreviewModal from './ReportPreviewModal';
 
+const MEMBER_COLORS = ['#2563eb', '#3b82f6', '#7c3aed', '#6366f1', '#1d4ed8'];
+
 const MODEL_OPTIONS = [
-  { value: '', label: 'None -- general summary' },
+  { value: '', label: 'None — general summary' },
   { value: 'equal', label: 'Even Split' },
   { value: 'proportional', label: 'Income-Based' },
   { value: 'hybrid', label: 'Balanced' },
   { value: 'custom', label: 'Custom' },
 ];
 
-const STATUS_STYLES = {
-  generated: { label: 'Generated', className: 'badge-gray' },
-  released: { label: 'Released', className: 'badge-blue' },
-  viewed: { label: 'Viewed', className: 'badge-green' },
-  failed: { label: 'Failed', className: 'badge-red' },
+const MODEL_LABELS = { equal: 'Even Split', proportional: 'Income-Based', hybrid: 'Balanced', custom: 'Custom' };
+
+const STATUS_CONFIG = {
+  generated: { label: 'Not Sent', color: '#94a3b8', bg: 'rgba(0, 0, 0, 0.05)' },
+  released:  { label: 'Sent',     color: '#2563eb', bg: 'rgba(37, 99, 235, 0.08)' },
+  viewed:    { label: 'Viewed',   color: '#16a34a', bg: 'rgba(22, 163, 74, 0.08)' },
+  failed:    { label: 'Failed',   color: '#dc2626', bg: 'rgba(220, 38, 38, 0.08)' },
 };
 
+const FILTER_STATUSES = [
+  { key: 'generated', label: 'Not Sent' },
+  { key: 'released',  label: 'Sent' },
+  { key: 'viewed',    label: 'Viewed' },
+];
+
 const POLL_INTERVAL_MS = 3000;
+
+function useFlash(duration = 3000) {
+  const [text, setText] = useState(null);
+  const timer = useRef(null);
+  function flash(msg, after) {
+    if (timer.current) clearTimeout(timer.current);
+    setText(msg);
+    timer.current = setTimeout(() => { setText(after ?? null); timer.current = null; }, duration);
+  }
+  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+  return [text, flash];
+}
+
+function ReportRow({ r, index, projectId, onUpdate, onPreview }) {
+  const cfg = STATUS_CONFIG[r.status] || STATUS_CONFIG.generated;
+  const wasSent = r.status === 'released' || r.status === 'viewed';
+  const color = MEMBER_COLORS[index % MEMBER_COLORS.length];
+
+  const [sendFlash, flashSend] = useFlash();
+  const [copyFlash, flashCopy] = useFlash();
+  const [sending, setSending] = useState(false);
+
+  const sendLabel = sendFlash || (sending ? 'Sending...' : wasSent ? 'Resend' : 'Send');
+
+  async function handleSend() {
+    setSending(true);
+    try {
+      const result = await api.releaseReports(projectId, [r.memberId]);
+      onUpdate(result.applicantReports || []);
+      flashSend('Sent \u2713', null);
+    } catch {
+      flashSend('Failed');
+    } finally {
+      setSending(false);
+    }
+  }
+
+  function handleCopy() {
+    if (r.reportToken) {
+      navigator.clipboard.writeText(`${window.location.origin}/report/${r.reportToken}`);
+      flashCopy('Copied \u2713');
+    }
+  }
+
+  return (
+    <div className="report-row">
+      <div className="report-row-identity">
+        <div className="people-avatar" style={{ background: color }}>{r.memberName?.[0]?.toUpperCase() || '?'}</div>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: 13, fontWeight: 700 }}>{r.memberName}</span>
+            <span className="people-status-pill" style={{ color: cfg.color, background: cfg.bg }}>{cfg.label}</span>
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{r.employmentType}</div>
+        </div>
+      </div>
+      <div className="report-row-actions">
+        <button className="btn btn-primary btn-sm" onClick={handleSend} disabled={sending} style={{ minWidth: 68 }}>
+          {sendLabel}
+        </button>
+        <button className="btn btn-secondary btn-sm report-btn-subtle" onClick={() => onPreview(r.memberId)}>Preview</button>
+        {r.reportToken && (
+          <button className="btn btn-secondary btn-sm report-btn-subtle" onClick={handleCopy} style={{ minWidth: 76 }}>
+            {copyFlash || 'Copy Link'}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function ReportTab({ projectId }) {
   const [report, setReport] = useState(null);
@@ -26,20 +106,18 @@ export default function ReportTab({ projectId }) {
   const [error, setError] = useState('');
   const [selectedModel, setSelectedModel] = useState('proportional');
 
-  // Applicant reports state
   const [applicantReports, setApplicantReports] = useState([]);
   const [previewMemberId, setPreviewMemberId] = useState(null);
-  const [releasingId, setReleasingId] = useState(null);
-  const [releasingAll, setReleasingAll] = useState(false);
   const [reportSearch, setReportSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const pollRef = useRef(null);
 
+  const [regenFlash, flashRegen] = useFlash();
+  const [sendAllFlash, flashSendAll] = useFlash();
+  const [sendingAll, setSendingAll] = useState(false);
+
   const stopPolling = useCallback(() => {
-    if (pollRef.current) {
-      clearInterval(pollRef.current);
-      pollRef.current = null;
-    }
+    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
   }, []);
 
   const startPolling = useCallback(() => {
@@ -53,14 +131,9 @@ export default function ReportTab({ projectId }) {
         if (rep) {
           setReport(rep);
           if (appRep.applicantReports?.length) setApplicantReports(appRep.applicantReports);
-          if (rep.status !== 'generating') {
-            stopPolling();
-            setGenerating(false);
-          }
+          if (rep.status !== 'generating') { stopPolling(); setGenerating(false); flashRegen('Done \u2713'); }
         }
-      } catch {
-        // ignore poll errors
-      }
+      } catch { /* ignore */ }
     }, POLL_INTERVAL_MS);
   }, [projectId, stopPolling]);
 
@@ -73,9 +146,10 @@ export default function ReportTab({ projectId }) {
     ]).then(([rep, appRep]) => {
       if (rep) {
         setReport(rep);
-        if (rep.status === 'generating') {
-          setGenerating(true);
-          startPolling();
+        if (rep.status === 'generating') { setGenerating(true); startPolling(); }
+        if (rep.selectedModelName) {
+          const key = Object.entries(MODEL_LABELS).find(([, v]) => v === rep.selectedModelName)?.[0];
+          if (key) setSelectedModel(key);
         }
       }
       setApplicantReports(appRep.applicantReports || []);
@@ -88,17 +162,13 @@ export default function ReportTab({ projectId }) {
     setError('');
     try {
       const result = await api.createReport(projectId, selectedModel || undefined);
-      setReport({
-        status: result.status,
-        narrative: result.narrative,
-        generatedAt: result.generatedAt,
-        selectedModelName: result.selectedModelName,
-      });
+      setReport({ status: result.status, narrative: result.narrative, generatedAt: result.generatedAt, selectedModelName: result.selectedModelName });
       if (result.status === 'generating') {
         startPolling();
       } else {
         if (result.applicantReports) setApplicantReports(result.applicantReports);
         setGenerating(false);
+        flashRegen('Done \u2713');
       }
     } catch (err) {
       setError(err.data?.message || err.message);
@@ -106,27 +176,16 @@ export default function ReportTab({ projectId }) {
     }
   }
 
-  async function handleRelease(memberId) {
-    setReleasingId(memberId);
-    try {
-      const result = await api.releaseReports(projectId, [memberId]);
-      setApplicantReports(result.applicantReports || []);
-    } catch (err) {
-      setError(err.data?.message || err.message);
-    } finally {
-      setReleasingId(null);
-    }
-  }
-
-  async function handleReleaseAll() {
-    setReleasingAll(true);
+  async function handleSendAll() {
+    setSendingAll(true);
     try {
       const result = await api.releaseAllReports(projectId);
       setApplicantReports(result.applicantReports || []);
+      flashSendAll('All Sent \u2713');
     } catch (err) {
       setError(err.data?.message || err.message);
     } finally {
-      setReleasingAll(false);
+      setSendingAll(false);
     }
   }
 
@@ -139,214 +198,122 @@ export default function ReportTab({ projectId }) {
     );
   }
 
-  const hasUnreleased = applicantReports.some((r) => r.status === 'generated');
   const generated = report?.status === 'complete';
+  const hasUnsent = applicantReports.some((r) => r.status === 'generated');
+
+  const usedModel = report?.selectedModelName;
+  const selectedLabel = MODEL_LABELS[selectedModel] || null;
+  const modelMismatch = generated && selectedLabel && usedModel && selectedLabel !== usedModel;
 
   const rq = reportSearch.toLowerCase().trim();
   const filteredReports = applicantReports.filter((r) => {
-    const matchesText = !rq ||
-      (r.memberName || '').toLowerCase().includes(rq) ||
-      (r.employmentType || '').toLowerCase().includes(rq);
+    const matchesText = !rq || (r.memberName || '').toLowerCase().includes(rq) || (r.employmentType || '').toLowerCase().includes(rq);
     const matchesStatus = !statusFilter || r.status === statusFilter;
     return matchesText && matchesStatus;
   });
   const hasActiveFilter = rq || statusFilter;
 
+  const regenLabel = generating ? 'Regenerating...' : regenFlash || (generated ? 'Regenerate' : 'Generate Reports');
+
   return (
-    <div className="report-content">
-      {/* Generate controls */}
-      <div className="report-header">
-        <div>
-          <h3 className="section-title">Applicant Reports</h3>
-          <p className="section-desc">
-            Generate personalized financial literacy reports for each applicant
-          </p>
-        </div>
-        <div className="report-actions">
-          <button
-            className="btn btn-primary"
-            onClick={handleGenerate}
-            disabled={generating}
-          >
-            {generating ? (
-              <>
-                <span className="spinner sm inline" />
-                Generating...
-              </>
-            ) : generated ? (
-              'Regenerate'
-            ) : (
-              'Generate Reports'
-            )}
-          </button>
-        </div>
-      </div>
-
-      <div className="report-config">
-        <div className="report-model-select">
-          <label>Split Model</label>
-          <select value={selectedModel} onChange={(e) => setSelectedModel(e.target.value)}>
-            {MODEL_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       {error && <div className="form-error">{error}</div>}
 
-      {/* Brief insight after generation */}
-      {generated && (
-        <div className="glass-card" style={{ padding: '0.75rem 1rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ fontSize: 13, opacity: 0.7 }}>
-            {applicantReports.length} report{applicantReports.length !== 1 ? 's' : ''} generated
-            {report.selectedModelName ? ` using ${report.selectedModelName} split` : ''}
-            {' \u2014 '}
-            {new Date(report.generatedAt).toLocaleString()}
-          </span>
+      {/* Search bar + filter pills — standalone, same as People tab */}
+      {applicantReports.length > 1 && (
+        <div className="search-filter-row">
+          <div className="search-bar">
+            <svg className="search-bar-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+            <input type="text" placeholder="Search by name..." value={reportSearch} onChange={(e) => setReportSearch(e.target.value)} />
+            {hasActiveFilter && <span className="search-bar-count">{filteredReports.length} of {applicantReports.length}</span>}
+            {(rq || statusFilter) && <button className="search-bar-clear" onClick={() => { setReportSearch(''); setStatusFilter(''); }}>&times;</button>}
+          </div>
+          {FILTER_STATUSES.map(({ key, label }) => {
+            const count = applicantReports.filter((ar) => ar.status === key).length;
+            if (count === 0) return null;
+            return (
+              <button key={key} className={`filter-pill ${statusFilter === key ? 'filter-pill-active' : ''}`} onClick={() => setStatusFilter(statusFilter === key ? '' : key)}>
+                {label}
+                <span style={{ opacity: 0.5 }}>{count}</span>
+              </button>
+            );
+          })}
         </div>
       )}
 
-      {/* Applicant report list */}
+      {/* Report card */}
       {applicantReports.length > 0 ? (
-        <>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem', gap: 8, flexWrap: 'wrap' }}>
-            {applicantReports.length > 1 && (
-              <div className="search-filter-row" style={{ flex: 1, minWidth: 200, marginBottom: 0 }}>
-                <div className="search-bar" style={{ flex: 1 }}>
-                  <svg className="search-bar-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-                  <input
-                    type="text"
-                    placeholder="Search by name..."
-                    value={reportSearch}
-                    onChange={(e) => setReportSearch(e.target.value)}
-                  />
-                  {hasActiveFilter && <span className="search-bar-count">{filteredReports.length} of {applicantReports.length}</span>}
-                  {(rq || statusFilter) && <button className="search-bar-clear" onClick={() => { setReportSearch(''); setStatusFilter(''); }}>&times;</button>}
-                </div>
-                {['generated', 'released', 'viewed'].map((s) => {
-                  const count = applicantReports.filter((r) => r.status === s).length;
-                  if (count === 0) return null;
-                  return (
-                    <button
-                      key={s}
-                      className={`filter-pill ${statusFilter === s ? 'filter-pill-active' : ''}`}
-                      onClick={() => setStatusFilter(statusFilter === s ? '' : s)}
-                    >
-                      {STATUS_STYLES[s].label}
-                      <span style={{ opacity: 0.5 }}>{count}</span>
-                    </button>
-                  );
-                })}
+        <div className="breakdown-card people-list-card">
+          {/* Card header: model + generate + send all on one row, status below */}
+          <div className="report-card-header">
+            <div className="report-card-header-row">
+              <select className="report-model-dropdown" value={selectedModel} onChange={(e) => setSelectedModel(e.target.value)}>
+                {MODEL_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+              <button className="btn btn-primary btn-sm" onClick={handleGenerate} disabled={generating} style={{ minWidth: 110 }}>
+                {generating && <span className="spinner sm inline" />}
+                {regenLabel}
+              </button>
+              {hasUnsent && (
+                <button className="btn btn-secondary btn-sm" onClick={handleSendAll} disabled={sendingAll} style={{ minWidth: 82 }}>
+                  {sendingAll ? 'Sending...' : sendAllFlash || 'Send All'}
+                </button>
+              )}
+            </div>
+            {generated && (
+              <div className="report-status-line">
+                <span>
+                  {applicantReports.length} report{applicantReports.length !== 1 ? 's' : ''} generated
+                  {usedModel ? ` using ${usedModel}` : ''}
+                  {' \u2014 '}
+                  {new Date(report.generatedAt).toLocaleString()}
+                </span>
+                {modelMismatch && (
+                  <span className="report-model-mismatch">Regenerate to use {selectedLabel}</span>
+                )}
               </div>
             )}
-            {hasUnreleased && (
-              <button
-                className="btn btn-primary"
-                onClick={handleReleaseAll}
-                disabled={releasingAll}
-                style={{ flexShrink: 0 }}
-              >
-                {releasingAll ? (
-                  <>
-                    <span className="spinner sm inline" />
-                    Sending...
-                  </>
-                ) : 'Release All'}
-              </button>
-            )}
           </div>
 
+          {/* Rows */}
           {hasActiveFilter && filteredReports.length === 0 ? (
-            <div className="search-empty-state">
+            <div className="search-empty-state" style={{ margin: '16px 0' }}>
               <span>&#128269;</span>
-              <span>No results for &ldquo;{reportSearch || statusFilter}&rdquo;</span>
+              <span>No results for &ldquo;{reportSearch || STATUS_CONFIG[statusFilter]?.label}&rdquo;</span>
             </div>
           ) : (
-          <div className="applicant-report-list">
-            {filteredReports.map((r) => {
-              const style = STATUS_STYLES[r.status] || STATUS_STYLES.generated;
-              return (
-                <div key={r.memberId} className="applicant-report-row glass-card" style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '1rem 1.25rem',
-                  marginBottom: '0.75rem',
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1 }}>
-                    <div className="member-avatar" style={{
-                      width: 36, height: 36, borderRadius: '50%',
-                      background: 'rgba(99, 102, 241, 0.15)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 14, fontWeight: 600, color: '#818cf8',
-                    }}>
-                      {r.memberName?.[0]?.toUpperCase() || '?'}
-                    </div>
-                    <div>
-                      <div style={{ fontWeight: 600, fontSize: 14 }}>{r.memberName}</div>
-                      <div style={{ fontSize: 13, opacity: 0.6 }}>{r.employmentType}</div>
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <span className={`status-badge ${style.className}`}>
-                      {style.label}
-                    </span>
-                    <button
-                      className="btn btn-secondary"
-                      style={{ padding: '0.4rem 0.75rem', fontSize: 13 }}
-                      onClick={() => setPreviewMemberId(r.memberId)}
-                    >
-                      Preview
-                    </button>
-                    {r.status === 'generated' && (
-                      <button
-                        className="btn btn-primary"
-                        style={{ padding: '0.4rem 0.75rem', fontSize: 13 }}
-                        onClick={() => handleRelease(r.memberId)}
-                        disabled={releasingId === r.memberId}
-                      >
-                        {releasingId === r.memberId ? 'Sending...' : 'Release'}
-                      </button>
-                    )}
-                    {(r.status === 'released' || r.status === 'viewed') && r.reportToken && (
-                      <button
-                        className="btn btn-secondary"
-                        style={{ padding: '0.4rem 0.75rem', fontSize: 13 }}
-                        onClick={() => {
-                          navigator.clipboard.writeText(`${window.location.origin}/report/${r.reportToken}`);
-                        }}
-                        title="Copy report link"
-                      >
-                        Copy Link
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+            filteredReports.map((r, i) => (
+              <ReportRow key={r.memberId} r={r} index={i} projectId={projectId} onUpdate={setApplicantReports} onPreview={setPreviewMemberId} />
+            ))
           )}
-        </>
-      ) : !generating ? (
-        <div className="empty-state">
-          <div className="empty-icon">&#128196;</div>
-          <h3>No reports yet</h3>
-          <p>
-            Select a split model above and click Generate to create individual reports for each applicant.
-          </p>
         </div>
-      ) : null}
+      ) : (
+        <div className="breakdown-card" style={{ padding: 0 }}>
+          <div className="report-card-header" style={{ borderBottom: 'none' }}>
+            <div className="report-card-header-row">
+              <select className="report-model-dropdown" value={selectedModel} onChange={(e) => setSelectedModel(e.target.value)}>
+                {MODEL_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+              <button className="btn btn-primary btn-sm" onClick={handleGenerate} disabled={generating} style={{ minWidth: 140 }}>
+                {generating && <span className="spinner sm inline" />}
+                {regenLabel}
+              </button>
+            </div>
+          </div>
+          {!generating && (
+            <div style={{ textAlign: 'center', padding: '8px 16px 20px', color: 'var(--text-muted)', fontSize: 13 }}>
+              Select a split model and click Generate to create individual reports for each applicant.
+            </div>
+          )}
+        </div>
+      )}
 
-      {/* Preview Modal */}
       {previewMemberId && (
-        <ReportPreviewModal
-          projectId={projectId}
-          memberId={previewMemberId}
-          onClose={() => setPreviewMemberId(null)}
-        />
+        <ReportPreviewModal projectId={projectId} memberId={previewMemberId} onClose={() => setPreviewMemberId(null)} />
       )}
     </div>
   );

@@ -80,7 +80,7 @@ function DtiGauge({ value, classification }) {
         <div className="dti-marker" style={{ left: '60%' }} />
         <div className="dti-marker dti-marker-warn" style={{ left: '71.7%' }} />
       </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: 'var(--text-muted)', marginTop: 2, fontWeight: 500 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-muted)', marginTop: 2, fontWeight: 500 }}>
         <span>0%</span>
         <span style={{ fontWeight: 600 }}>36%</span>
         <span style={{ fontWeight: 600 }}>43%</span>
@@ -162,7 +162,7 @@ function RiskAnalysis({ analytics, dependencyInsight, removedIds, setRemovedIds 
                 <span style={{ fontSize: 13, fontWeight: 800, letterSpacing: '-0.02em' }}>
                   Without {scenario.removed.map((r) => r.displayName).join(' & ')}
                 </span>
-                <span style={{ fontSize: 10, color: 'var(--text-secondary)', marginLeft: 8 }}>
+                <span style={{ fontSize: 11, color: 'var(--text-secondary)', marginLeft: 8 }}>
                   -{fmt(scenario.removedIncome)}/mo
                 </span>
               </div>
@@ -170,7 +170,7 @@ function RiskAnalysis({ analytics, dependencyInsight, removedIds, setRemovedIds 
                 <span style={{ fontSize: 20, fontWeight: 900, letterSpacing: '-0.03em', fontVariantNumeric: 'tabular-nums', color: dtiColor(scenario.dti) }}>
                   {pctFmt(scenario.dti)}
                 </span>
-                <span style={{ fontSize: 10, fontWeight: 700, color: dtiColor(scenario.dti) }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: dtiColor(scenario.dti) }}>
                   {dtiLabel(scenario.dti)}
                 </span>
               </div>
@@ -183,13 +183,13 @@ function RiskAnalysis({ analytics, dependencyInsight, removedIds, setRemovedIds 
               <span style={{ display: 'flex', gap: 4, alignItems: 'baseline' }}>
                 <span style={{ fontWeight: 800 }}>{pctFmt(scenario.dti)} DTI</span>
                 {(() => { const d = scenario.dti - baselineDTI; return d !== 0 ? (
-                  <span style={{ fontWeight: 700, fontSize: 10, color: d > 0 ? 'var(--error)' : 'var(--success)' }}>({d > 0 ? '+' : ''}{pctFmt(d)})</span>
+                  <span style={{ fontWeight: 700, fontSize: 11, color: d > 0 ? 'var(--error)' : 'var(--success)' }}>({d > 0 ? '+' : ''}{pctFmt(d)})</span>
                 ) : null; })()}
               </span>
               <span style={{ display: 'flex', gap: 4, alignItems: 'baseline' }}>
                 <span style={{ fontWeight: 800, color: roomColor(scenario.room) }}>{fmt(scenario.room)} room</span>
                 {(() => { const d = scenario.room - baselineRoom; return d !== 0 ? (
-                  <span style={{ fontWeight: 700, fontSize: 10, color: d < 0 ? 'var(--error)' : 'var(--success)' }}>({d > 0 ? '+' : ''}{fmt(d)})</span>
+                  <span style={{ fontWeight: 700, fontSize: 11, color: d < 0 ? 'var(--error)' : 'var(--success)' }}>({d > 0 ? '+' : ''}{fmt(d)})</span>
                 ) : null; })()}
               </span>
             </div>
@@ -214,7 +214,7 @@ function GroupComposition({ composition }) {
     <div className="breakdown-card" style={{ padding: '12px 14px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
         <span style={{ fontWeight: 800, fontSize: 14, letterSpacing: '-0.02em' }}>Credit Composition</span>
-        <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 6, background: concStyle.bg, color: concStyle.color, border: `1px solid ${concStyle.border}` }}>
+        <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 6, background: concStyle.bg, color: concStyle.color, border: `1px solid ${concStyle.border}` }}>
           {composition.debtConcentrationRisk} concentration
         </span>
       </div>
@@ -225,11 +225,11 @@ function GroupComposition({ composition }) {
           <div style={{ display: 'flex', height: 20, borderRadius: 6, overflow: 'hidden', marginBottom: 4 }}>
             {Object.entries(agg).filter(([, c]) => c.totalBalance > 0).map(([cat, c]) => (
               <div key={cat} style={{ width: `${(c.totalBalance / total) * 100}%`, background: COMP_COLORS[cat], minWidth: 2, display: 'flex', alignItems: 'center', justifyContent: 'center' }} title={`${cat}: ${fmt(c.totalBalance)}`}>
-                {(c.totalBalance / total) > 0.12 && <span style={{ fontSize: 9, color: 'white', fontWeight: 700, textTransform: 'capitalize' }}>{cat}</span>}
+                {(c.totalBalance / total) > 0.12 && <span style={{ fontSize: 11, color: 'white', fontWeight: 700, textTransform: 'capitalize' }}>{cat}</span>}
               </div>
             ))}
           </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 14px', fontSize: 10 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 14px', fontSize: 11 }}>
             {Object.entries(agg).filter(([, c]) => c.count > 0).map(([cat, c]) => (
               <span key={cat} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                 <span style={{ width: 7, height: 7, borderRadius: 2, background: COMP_COLORS[cat], flexShrink: 0 }} />
@@ -350,7 +350,7 @@ export default function AnalyticsTab({ projectId }) {
           </div>
         </div>
         <AllocationBar income={totalIncome} debt={totalDebt} housing={monthlyCost} room={groupRoom} height={34} />
-        <div style={{ display: 'flex', gap: 14, marginTop: 4, fontSize: 10, color: 'var(--text-muted)' }}>
+        <div style={{ display: 'flex', gap: 14, marginTop: 4, fontSize: 11, color: 'var(--text-muted)' }}>
           <span>{fmt(totalIncome)} income</span>
           <span>{pctFmt(analytics.groupDTI)} DTI</span>
           <span style={{ color: roomColor(groupRoom), fontWeight: 700 }}>{fmt(groupRoom)} room</span>

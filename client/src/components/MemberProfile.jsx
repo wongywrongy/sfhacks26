@@ -310,7 +310,7 @@ export default function MemberProfile({ projectId, memberId, memberIndex = 0, on
                     <div className="overlay-section">
                       <button className="tradelines-toggle" onClick={() => setShowTradelines(!showTradelines)} style={{ marginBottom: showTradelines ? 6 : 0 }}>
                         {showTradelines ? 'Hide' : 'Show'} Tradelines ({tradelines.length})
-                        <span style={{ fontSize: 10 }}>{showTradelines ? '▲' : '▼'}</span>
+                        <span style={{ fontSize: 11 }}>{showTradelines ? '▲' : '▼'}</span>
                       </button>
                       {showTradelines && (
                         <table className="overlay-tradelines">
@@ -458,12 +458,12 @@ export default function MemberProfile({ projectId, memberId, memberIndex = 0, on
 
               {/* AI Assessment */}
               {aiText && (
-                <div style={{ marginTop: 8 }}>
+                <div style={{ marginTop: 8, gridColumn: '1 / -1' }}>
                   <AiCallout label="Assessment">{aiText}</AiCallout>
                 </div>
               )}
               {!aiText && creditComplete && (
-                <div style={{ fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic', marginTop: 8 }}>AI assessment temporarily unavailable</div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic', gridColumn: '1 / -1' }}>AI assessment temporarily unavailable</div>
               )}
             </>
           )}

@@ -49,7 +49,7 @@ function StagePill({ stage, count }) {
 }
 
 function DTIMiniBar({ dti }) {
-  if (dti == null) return <span style={{ color: 'var(--text-muted)', fontSize: 10 }}>--</span>;
+  if (dti == null) return <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>--</span>;
   const pct = Math.min(dti * 100, 60);
   const color = dti <= 0.36 ? 'var(--success)' : dti <= 0.43 ? 'var(--warning)' : 'var(--error)';
   return (
@@ -180,7 +180,7 @@ function StatWithDropdown({ children, label, rows, onNavigate, emptyText }) {
   );
 }
 
-function PortfolioStats({ buildings, unlinkedDeals, onNavigate }) {
+function PortfolioStats({ buildings, unlinkedDeals, onNavigate, insights }) {
   const stats = useMemo(() => {
     let revenue = 0, totalApplicants = 0, screenedApplicants = 0, activeApps = 0, vacant = 0, attention = 0;
     const screenedBreakdown = [];
@@ -265,32 +265,74 @@ function PortfolioStats({ buildings, unlinkedDeals, onNavigate }) {
 
   const allScreened = stats.totalApplicants > 0 && stats.screenedApplicants === stats.totalApplicants;
 
+  const fallback = useMemo(() => computeFallbackActivity(buildings), [buildings]);
+  const recentActivity = insights?.whatsNew || fallback.whatsNew;
+  const actionRequired = insights?.whatsNeeded || fallback.whatsNeeded;
+  const noActions = !actionRequired || actionRequired === 'No actions required.' || actionRequired === 'No actions required';
+  const hasInsights = recentActivity || actionRequired;
+
   return (
-    <div className="portfolio-stats">
-      <div className="portfolio-stat">
-        <span className="portfolio-stat-value">${stats.revenue.toLocaleString()}</span>
-        <span className="portfolio-stat-label">Revenue</span>
+    <div className="portfolio-stats-container">
+      <div className="portfolio-stats-row">
+        <div className="portfolio-stat">
+          <span className="portfolio-stat-value">${stats.revenue.toLocaleString()}</span>
+          <span className="portfolio-stat-label">Revenue</span>
+        </div>
+        <StatWithDropdown label="Screened" rows={stats.screenedBreakdown} onNavigate={onNavigate} emptyText="No applicants yet">
+          <span className="portfolio-stat-value" style={{ color: allScreened ? 'var(--success)' : 'var(--text-primary)' }}>
+            {stats.screenedApplicants} of {stats.totalApplicants}
+          </span>
+        </StatWithDropdown>
+        <StatWithDropdown label="Active Apps" rows={stats.activeAppsBreakdown} onNavigate={onNavigate} emptyText="No active applications">
+          <span className="portfolio-stat-value" style={{ color: stats.activeApps > 0 ? 'var(--primary)' : 'var(--text-primary)' }}>
+            {stats.activeApps}
+          </span>
+        </StatWithDropdown>
+        <StatWithDropdown label="Vacant" rows={stats.vacantBreakdown} onNavigate={onNavigate} emptyText="No vacant units">
+          <span className="portfolio-stat-value" style={{ color: stats.vacant > 0 ? 'var(--warning)' : 'var(--success)' }}>
+            {stats.vacant}
+          </span>
+        </StatWithDropdown>
+        <StatWithDropdown label="Needs Attention" rows={stats.attentionBreakdown} onNavigate={onNavigate} emptyText="No issues found">
+          <span className="portfolio-stat-value" style={{ color: stats.attention > 0 ? 'var(--error)' : 'var(--text-primary)' }}>
+            {stats.attention}
+          </span>
+        </StatWithDropdown>
       </div>
-      <StatWithDropdown label="Screened" rows={stats.screenedBreakdown} onNavigate={onNavigate} emptyText="No applicants yet">
-        <span className="portfolio-stat-value" style={{ color: allScreened ? 'var(--success)' : 'var(--text-primary)' }}>
-          {stats.screenedApplicants} of {stats.totalApplicants}
-        </span>
-      </StatWithDropdown>
-      <StatWithDropdown label="Active Apps" rows={stats.activeAppsBreakdown} onNavigate={onNavigate} emptyText="No active applications">
-        <span className="portfolio-stat-value" style={{ color: stats.activeApps > 0 ? 'var(--primary)' : 'var(--text-primary)' }}>
-          {stats.activeApps}
-        </span>
-      </StatWithDropdown>
-      <StatWithDropdown label="Vacant" rows={stats.vacantBreakdown} onNavigate={onNavigate} emptyText="No vacant units">
-        <span className="portfolio-stat-value" style={{ color: stats.vacant > 0 ? 'var(--warning)' : 'var(--success)' }}>
-          {stats.vacant}
-        </span>
-      </StatWithDropdown>
-      <StatWithDropdown label="Needs Attention" rows={stats.attentionBreakdown} onNavigate={onNavigate} emptyText="No issues found">
-        <span className="portfolio-stat-value" style={{ color: stats.attention > 0 ? 'var(--error)' : 'var(--text-primary)' }}>
-          {stats.attention}
-        </span>
-      </StatWithDropdown>
+      {hasInsights && (
+        <div className="portfolio-insights">
+          {recentActivity && (
+            <div className="portfolio-insight-item">
+              <div className="portfolio-insight-header">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2.5" strokeLinecap="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <polyline points="12 6 12 12 16 14" />
+                </svg>
+                <span className="portfolio-insight-label">Recent Activity</span>
+              </div>
+              <div className="portfolio-insight-text">{recentActivity}</div>
+            </div>
+          )}
+          <div className={`portfolio-insight-item ${noActions ? 'portfolio-insight-clear' : 'portfolio-insight-needed'}`}>
+            <div className="portfolio-insight-header">
+              {noActions ? (
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round">
+                  <path d="M22 11.08V12a10 10 0 11-5.93-9.14" />
+                  <polyline points="22 4 12 14.01 9 11.01" />
+                </svg>
+              ) : (
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2.5" strokeLinecap="round">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                  <line x1="12" y1="9" x2="12" y2="13" />
+                  <line x1="12" y1="17" x2="12.01" y2="17" />
+                </svg>
+              )}
+              <span className="portfolio-insight-label" style={{ color: noActions ? '#16a34a' : '#d97706' }}>Action Required</span>
+            </div>
+            <div className="portfolio-insight-text">{noActions ? 'No actions required.' : actionRequired}</div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -339,50 +381,6 @@ function computeFallbackActivity(buildings) {
   return { whatsNew, whatsNeeded };
 }
 
-function InsightCards({ insights, buildings }) {
-  const fallback = useMemo(() => computeFallbackActivity(buildings), [buildings]);
-  const recentActivity = insights?.whatsNew || fallback.whatsNew;
-  const actionRequired = insights?.whatsNeeded || fallback.whatsNeeded;
-  const noActions = !actionRequired || actionRequired === 'No actions required.' || actionRequired === 'No actions required';
-
-  if (!recentActivity && !actionRequired) return null;
-
-  return (
-    <div className="insight-cards-grid">
-      {recentActivity && (
-        <div className="breakdown-ai-callout insight-card-new">
-          <div className="breakdown-ai-header">
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2.5" strokeLinecap="round">
-              <circle cx="12" cy="12" r="10" />
-              <polyline points="12 6 12 12 16 14" />
-            </svg>
-            <span className="breakdown-ai-label">Recent Activity</span>
-          </div>
-          <div className="breakdown-ai-text">{recentActivity}</div>
-        </div>
-      )}
-      <div className={`breakdown-ai-callout ${noActions ? 'insight-card-clear' : 'insight-card-needed'}`}>
-        <div className="breakdown-ai-header">
-          {noActions ? (
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round">
-              <path d="M22 11.08V12a10 10 0 11-5.93-9.14" />
-              <polyline points="22 4 12 14.01 9 11.01" />
-            </svg>
-          ) : (
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2.5" strokeLinecap="round">
-              <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-              <line x1="12" y1="9" x2="12" y2="13" />
-              <line x1="12" y1="17" x2="12.01" y2="17" />
-            </svg>
-          )}
-          <span className="breakdown-ai-label" style={{ color: noActions ? '#16a34a' : '#d97706' }}>Action Required</span>
-        </div>
-        <div className="breakdown-ai-text">{noActions ? 'No actions required.' : actionRequired}</div>
-      </div>
-    </div>
-  );
-}
-
 const STAGE_ORDER = ['empty', 'in_progress', 'review', 'approved'];
 
 function buildingSummaryStage(units) {
@@ -428,14 +426,14 @@ function UnitRow({ unit, building, onNavigate, onCreateDeal, isLast }) {
       <div className="unit-row-cell">
         {vacant ? <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>Vacant</span> : <StagePill stage={unit.deal.stage} />}
       </div>
-      <div className="unit-row-cell" style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+      <div className="unit-row-cell" style={{ fontSize: 11, color: 'var(--text-muted)' }}>
         {!vacant && unit.deal.riskFlags?.length > 0 ? (
-          <span style={{ color: 'var(--error)', fontSize: 10 }}>{unit.deal.riskFlags[0]}</span>
+          <span style={{ color: 'var(--error)', fontSize: 11 }}>{unit.deal.riskFlags[0]}</span>
         ) : !vacant ? formatRelativeTime(unit.deal.lastActivity) : null}
       </div>
       <div className="unit-row-cell" style={{ textAlign: 'right' }}>
         {vacant ? (
-          <button className="btn btn-secondary btn-sm" onClick={(e) => { e.stopPropagation(); onCreateDeal(building, unit); }} style={{ fontSize: 10, padding: '2px 8px' }}>
+          <button className="btn btn-secondary btn-sm" onClick={(e) => { e.stopPropagation(); onCreateDeal(building, unit); }} style={{ fontSize: 11, padding: '2px 8px' }}>
             + Create Deal
           </button>
         ) : (
@@ -626,8 +624,7 @@ export default function Dashboard() {
             </div>
           ) : (
             <>
-              <PortfolioStats buildings={buildings} unlinkedDeals={unlinkedDeals} onNavigate={handleNavigate} />
-              <InsightCards insights={overview?.insights} buildings={buildings} />
+              <PortfolioStats buildings={buildings} unlinkedDeals={unlinkedDeals} onNavigate={handleNavigate} insights={overview?.insights} />
 
               {totalAll > 1 && (
                 <div className="search-bar" style={{ marginBottom: 10 }}>

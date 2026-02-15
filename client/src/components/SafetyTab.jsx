@@ -40,7 +40,7 @@ const OUTCOME_COLORS = {
 function Badge({ label, color }) {
   return (
     <span style={{
-      fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 4, textTransform: 'capitalize',
+      fontSize: 11, fontWeight: 700, padding: '1px 6px', borderRadius: 4, textTransform: 'capitalize',
       background: `${color}15`, color, border: `1px solid ${color}30`,
     }}>
       {label}
@@ -104,8 +104,8 @@ function OverviewCard({ member }) {
   return (
     <div style={{
       display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
-      padding: '10px 14px', borderRadius: 10, background: 'var(--card-bg)',
-      border: '1px solid var(--card-border)', minWidth: 80,
+      padding: '10px 14px', borderRadius: 8, background: 'rgba(0,0,0,0.02)',
+      border: '1px solid rgba(0,0,0,0.06)', minWidth: 80,
     }}>
       <span style={{ fontSize: 13, fontWeight: 700 }}>{member.firstName} {member.lastInitial}.</span>
       <div style={{ display: 'flex', gap: 8 }}>
@@ -132,7 +132,7 @@ function CriminalSection({ data }) {
             <Badge label={r.disposition} color={DISPOSITION_COLORS[r.disposition] || '#94a3b8'} />
             <Badge label={r.severity} color={SEVERITY_COLORS[r.severity] || '#94a3b8'} />
           </div>
-          <div style={{ display: 'flex', gap: 12, color: 'var(--text-muted)', fontSize: 10 }}>
+          <div style={{ display: 'flex', gap: 12, color: 'var(--text-muted)', fontSize: 11 }}>
             {r.jurisdiction && <span>{r.jurisdiction}</span>}
             {r.recencyLabel && <span>{r.recencyLabel} — {r.recencyCategory}</span>}
           </div>
@@ -156,7 +156,7 @@ function EvictionSection({ data }) {
             {r.amount != null && <span style={{ fontWeight: 700, fontSize: 12 }}>{fmt(r.amount)}</span>}
             <Badge label={r.severity} color={SEVERITY_COLORS[r.severity] || '#94a3b8'} />
           </div>
-          <div style={{ display: 'flex', gap: 12, color: 'var(--text-muted)', fontSize: 10 }}>
+          <div style={{ display: 'flex', gap: 12, color: 'var(--text-muted)', fontSize: 11 }}>
             {r.jurisdiction && <span>{r.jurisdiction}</span>}
             {r.recencyLabel && <span>{r.recencyLabel} — {r.recencyCategory}</span>}
           </div>
@@ -178,12 +178,12 @@ function IdentitySection({ data }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         <span style={{ fontSize: 20, fontWeight: 900, color: statusColor, letterSpacing: '-0.02em' }}>{data.cviScore ?? '—'}</span>
         <div>
-          <div style={{ fontSize: 10, fontWeight: 700, color: statusColor, textTransform: 'capitalize' }}>{data.verificationStatus}</div>
-          <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>CVI Score</div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: statusColor, textTransform: 'capitalize' }}>{data.verificationStatus}</div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>CVI Score</div>
         </div>
       </div>
       {data.matchDetails && (
-        <div style={{ display: 'flex', gap: 8, fontSize: 10, color: 'var(--text-muted)' }}>
+        <div style={{ display: 'flex', gap: 8, fontSize: 11, color: 'var(--text-muted)' }}>
           {data.matchDetails.ssnMatch != null && <span>SSN: {data.matchDetails.ssnMatch ? 'Match' : 'No match'}</span>}
           {data.matchDetails.dobMatch != null && <span>DOB: {data.matchDetails.dobMatch ? 'Match' : 'No match'}</span>}
           {data.matchDetails.addressMatch != null && <span>Addr: {data.matchDetails.addressMatch ? 'Match' : 'No match'}</span>}
@@ -208,7 +208,7 @@ function CollapsibleSection({ title, icon, defaultOpen = false, children }) {
       >
         {icon}
         <span>{title}</span>
-        <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--text-muted)' }}>{open ? '▲' : '▼'}</span>
+        <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-muted)' }}>{open ? '▲' : '▼'}</span>
       </button>
       {open && <div style={{ paddingBottom: 8 }}>{children}</div>}
     </div>
@@ -323,17 +323,19 @@ export default function SafetyTab({ projectId }) {
         </div>
       </div>
 
-      {/* Group overview row */}
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        {data.members.map((m) => (
-          <OverviewCard key={m._id} member={m} />
-        ))}
+      {/* Group overview row + AI Safety Overview */}
+      <div className="breakdown-card" style={{ padding: '12px 14px' }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {data.members.map((m) => (
+            <OverviewCard key={m._id} member={m} />
+          ))}
+        </div>
+        {data.aiSafetyOverview?.overview && (
+          <div style={{ marginTop: 8 }}>
+            <AiCallout label="Group Safety Overview">{data.aiSafetyOverview.overview}</AiCallout>
+          </div>
+        )}
       </div>
-
-      {/* AI Safety Overview */}
-      {data.aiSafetyOverview?.overview && (
-        <AiCallout label="Group Safety Overview">{data.aiSafetyOverview.overview}</AiCallout>
-      )}
 
       {/* Search bar */}
       {data.members.length > 1 && (

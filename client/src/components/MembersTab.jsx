@@ -146,7 +146,7 @@ function PersonRow({ m, i, onNavigate, allMembers }) {
                 {status.label}
               </span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: 'var(--text-muted)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--text-muted)' }}>
               <EmploymentIcon type={m.employmentType} />
               <span>{m.employmentType}</span>
             </div>
@@ -160,9 +160,9 @@ function PersonRow({ m, i, onNavigate, allMembers }) {
           <div className="people-stat credit-stat">
             <span className="people-stat-value" style={{ color: m.creditScore != null ? scoreColor(m.creditScore) : 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: 3 }}>
               {m.creditScore ?? '\u2014'}
-              {m.paymentTrajectory?.trend === 'improving' && <span style={{ color: '#16a34a', fontSize: 10, fontWeight: 800, lineHeight: 1 }} title="Improving">&#9650;</span>}
-              {m.paymentTrajectory?.trend === 'stable' && <span style={{ color: '#94a3b8', fontSize: 9, fontWeight: 800, lineHeight: 1 }} title="Stable">&mdash;</span>}
-              {m.paymentTrajectory?.trend === 'declining' && <span style={{ color: '#dc2626', fontSize: 10, fontWeight: 800, lineHeight: 1 }} title="Declining">&#9660;</span>}
+              {m.paymentTrajectory?.trend === 'improving' && <span style={{ color: '#16a34a', fontSize: 11, fontWeight: 800, lineHeight: 1 }} title="Improving">&#9650;</span>}
+              {m.paymentTrajectory?.trend === 'stable' && <span style={{ color: '#94a3b8', fontSize: 11, fontWeight: 800, lineHeight: 1 }} title="Stable">&mdash;</span>}
+              {m.paymentTrajectory?.trend === 'declining' && <span style={{ color: '#dc2626', fontSize: 11, fontWeight: 800, lineHeight: 1 }} title="Declining">&#9660;</span>}
             </span>
             <span className="people-stat-label">credit</span>
           </div>
@@ -250,10 +250,6 @@ export default function MembersTab({ members, groupAssessment, onSelectMember })
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      {groupInsight && (
-        <AiCallout label="Group Composition">{groupInsight}</AiCallout>
-      )}
-
       {members.length > 1 && (
         <div className="search-bar">
           <svg className="search-bar-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
@@ -284,6 +280,11 @@ export default function MembersTab({ members, groupAssessment, onSelectMember })
               allMembers={members}
             />
           ))}
+          {groupInsight && (
+            <div style={{ padding: '8px 14px 12px' }}>
+              <AiCallout label="Group Composition">{groupInsight}</AiCallout>
+            </div>
+          )}
         </div>
       )}
     </div>

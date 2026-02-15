@@ -386,15 +386,15 @@ export default function ContributionsTab({ projectId, members, estimatedMonthlyC
                 <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
                   <div style={{ width: 22, height: 22, borderRadius: 6, background: color, display: 'grid', placeItems: 'center', color: 'white', fontSize: 10, fontWeight: 800, flexShrink: 0 }}>{m.displayName[0]}</div>
                   <span style={{ fontWeight: 700, fontSize: 13 }}>{m.displayName}</span>
-                  <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{fmt(income)}/mo</span>
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{fmt(income)}/mo</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ fontSize: 20, fontWeight: 900, letterSpacing: '-0.03em', fontVariantNumeric: 'tabular-nums' }}>{fmt(m.paymentAmount)}</span>
                   {m.percentageOfIncome != null && (
-                    <span style={{ fontSize: 10, fontWeight: 600, color: over ? 'var(--error)' : 'var(--text-secondary)' }}>{pctFmt(m.percentageOfIncome)}</span>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: over ? 'var(--error)' : 'var(--text-secondary)' }}>{pctFmt(m.percentageOfIncome)}</span>
                   )}
                   {over && <span className="breakdown-over-badge">30%+</span>}
-                  <span style={{ fontSize: 10, fontWeight: 700, color: rc, minWidth: 48, textAlign: 'right' }}>{fmt(room)} left</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: rc, minWidth: 48, textAlign: 'right' }}>{fmt(room)} left</span>
                 </div>
               </div>
               {/* Allocation bar */}
@@ -425,11 +425,6 @@ export default function ContributionsTab({ projectId, members, estimatedMonthlyC
           </div>
         )}
       </div>
-
-      {/* RECOMMENDATION */}
-      {recommendationText && (
-        <AiCallout label="Recommendation">{recommendationText}</AiCallout>
-      )}
 
       {/* ALL MODELS TABLE — full width */}
       <div className="breakdown-card breakdown-glance-card">
@@ -481,6 +476,11 @@ export default function ContributionsTab({ projectId, members, estimatedMonthlyC
             </tr>
           </tbody>
         </table>
+        {recommendationText && (
+          <div style={{ marginTop: 8 }}>
+            <AiCallout label="Recommendation">{recommendationText}</AiCallout>
+          </div>
+        )}
       </div>
     </div>
   );

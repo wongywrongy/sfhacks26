@@ -247,14 +247,14 @@ async function _generateReportsBackground(projectId, project, metrics, selectedM
         identityVerified: member.identity?.verificationStatus === 'verified' || member.identityStructured?.verificationStatus === 'verified',
       });
 
-      // Preserve release/view state from previous generation
+      // Reset status on regeneration — new content needs to be re-sent
       const prev = existingByMember.get(member._id.toString());
 
       return {
         memberId: member._id.toString(),
         memberName: member.firstName,
         employmentType: member.employmentType,
-        status: aiResult.success ? (prev?.status === 'released' || prev?.status === 'viewed' ? prev.status : 'generated') : 'failed',
+        status: aiResult.success ? 'generated' : 'failed',
         reportData: aiResult.success ? aiResult.data : null,
         reportToken: prev?.reportToken || crypto.randomUUID(),
         paymentAmount,
@@ -270,8 +270,8 @@ async function _generateReportsBackground(projectId, project, metrics, selectedM
         evictionRecordCount: member.evictionStructured?.summary?.totalFilings ?? (member.eviction?.records?.length ?? 0),
         identityVerified: member.identity?.verificationStatus === 'verified' || member.identityStructured?.verificationStatus === 'verified',
         generatedAt: new Date(),
-        releasedAt: prev?.releasedAt || null,
-        viewedAt: prev?.viewedAt || null,
+        releasedAt: null,
+        viewedAt: null,
       };
     }));
 
