@@ -1,7 +1,7 @@
 const repo = require('../repositories/project-repository');
 const crs = require('../wrappers/crs-wrapper');
 const gemini = require('../wrappers/gemini-wrapper');
-const { CrsCheckStatus } = require('../../../shared/enums');
+const { CrsCheckStatus, DealStage } = require('../../../shared/enums');
 const { computePaymentTrajectory, computeTradelineComposition } = require('./credit-analysis-service');
 const { structureCriminalRecords, structureEvictionRecords, structureIdentity } = require('./safety-service');
 
@@ -16,6 +16,11 @@ async function processIntake(intakeToken, memberData) {
 
   const member = await repo.createMember(projectId, memberData);
   const memberId = member._id.toString();
+
+  // Auto-advance: Empty → In Progress on first applicant
+  if (!project.stage || project.stage === DealStage.EMPTY) {
+    repo.updateProject(projectId, { stage: DealStage.IN_PROGRESS }).catch(() => {});
+  }
 
   // Fire CRS calls asynchronously — don't block the HTTP response
   processCrsCalls(projectId, memberId, memberData).catch((err) => {
@@ -145,6 +150,25 @@ async function processCrsCalls(projectId, memberId, memberData) {
       await col().updateOne(match, { $set: aiFields });
     }
   }
+
+  // Auto-advance: In Progress → Review when all members submitted + all checks complete
+  try {
+    const freshProject = await repo.getProjectById(projectId);
+    if (freshProject && freshProject.stage === DealStage.IN_PROGRESS) {
+      const members = freshProject.members || [];
+      const expected = freshProject.expectedMemberCount || 0;
+      const allSubmitted = members.length >= expected;
+      const allChecksComplete = members.every((m) =>
+        m.credit?.status === CrsCheckStatus.COMPLETE &&
+        m.criminal?.status === CrsCheckStatus.COMPLETE &&
+        m.eviction?.status === CrsCheckStatus.COMPLETE &&
+        m.identity?.status === CrsCheckStatus.COMPLETE
+      );
+      if (allSubmitted && allChecksComplete) {
+        await repo.updateProject(projectId, { stage: DealStage.REVIEW });
+      }
+    }
+  } catch (_) { /* don't block on auto-advance failure */ }
 
   // Fire-and-forget: reassess group after individual CRS + AI completes
   const { reassessGroup } = require('./analytics-service');
@@ -301,6 +325,25 @@ async function retryCrsChecks(projectId, memberId) {
       );
     }
   }
+
+  // Auto-advance: In Progress → Review after successful retries
+  try {
+    const freshProject = await repo.getProjectById(projectId);
+    if (freshProject && freshProject.stage === DealStage.IN_PROGRESS) {
+      const members = freshProject.members || [];
+      const expected = freshProject.expectedMemberCount || 0;
+      const allSubmitted = members.length >= expected;
+      const allChecksComplete = members.every((m) =>
+        m.credit?.status === CrsCheckStatus.COMPLETE &&
+        m.criminal?.status === CrsCheckStatus.COMPLETE &&
+        m.eviction?.status === CrsCheckStatus.COMPLETE &&
+        m.identity?.status === CrsCheckStatus.COMPLETE
+      );
+      if (allSubmitted && allChecksComplete) {
+        await repo.updateProject(projectId, { stage: DealStage.REVIEW });
+      }
+    }
+  } catch (_) { /* don't block on auto-advance failure */ }
 
   // Fire-and-forget: reassess group after retry completes
   const { reassessGroup } = require('./analytics-service');

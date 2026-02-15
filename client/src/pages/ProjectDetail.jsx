@@ -13,9 +13,9 @@ import '../styles/dashboard.css';
 const TABS = ['People', 'Financials', 'Breakdown', 'Summary', 'Safety'];
 
 const STAGE_OPTIONS = [
-  { value: 'screening', label: 'Screening', color: '#94a3b8' },
-  { value: 'review', label: 'Review', color: '#ca8a04' },
-  { value: 'negotiating', label: 'Negotiating', color: '#2563eb' },
+  { value: 'empty', label: 'Empty', color: '#94a3b8' },
+  { value: 'in_progress', label: 'In Progress', color: '#ca8a04' },
+  { value: 'review', label: 'Review', color: '#2563eb' },
   { value: 'approved', label: 'Approved', color: '#16a34a' },
 ];
 
@@ -146,8 +146,8 @@ export default function ProjectDetail() {
                   </span>
                   <select
                     className="stage-select"
-                    value={project.stage || 'screening'}
-                    style={{ color: STAGE_OPTIONS.find((s) => s.value === (project.stage || 'screening'))?.color }}
+                    value={project.stage || 'empty'}
+                    style={{ color: STAGE_OPTIONS.find((s) => s.value === (project.stage || 'empty'))?.color }}
                     onClick={(e) => e.stopPropagation()}
                     onChange={async (e) => {
                       const newStage = e.target.value;

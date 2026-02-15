@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import Topbar from '../components/Topbar';
@@ -21,10 +22,10 @@ function formatRelativeTime(date) {
 }
 
 const STAGE_CONFIG = {
-  screening: { label: 'Screening', color: '#94a3b8' },
-  review:    { label: 'Review',    color: '#ca8a04' },
-  negotiating: { label: 'Negotiating', color: '#2563eb' },
-  approved:  { label: 'Approved',  color: '#16a34a' },
+  empty:       { label: 'Empty',       color: '#94a3b8' },
+  in_progress: { label: 'In Progress', color: '#ca8a04' },
+  review:      { label: 'Review',      color: '#2563eb' },
+  approved:    { label: 'Approved',    color: '#16a34a' },
 };
 
 // ── Sub-components ───────────────────────────────────────────
@@ -38,7 +39,7 @@ function StagePill({ stage, count }) {
       </span>
     );
   }
-  const cfg = STAGE_CONFIG[stage] || STAGE_CONFIG.screening;
+  const cfg = STAGE_CONFIG[stage] || STAGE_CONFIG.empty;
   return (
     <span className="stage-pill" style={{ background: `${cfg.color}18`, color: cfg.color }}>
       <span className="stage-pill-dot" style={{ background: cfg.color }} />
@@ -61,42 +62,207 @@ function DTIMiniBar({ dti }) {
   );
 }
 
-function needsAttention(deal) {
-  if (!deal) return false;
-  if (deal.riskFlags?.length > 0) return true;
-  if (deal.groupDTI != null && deal.groupDTI > 0.43) return true;
-  if (deal.avgCredit != null && deal.avgCredit < 670) return true;
-  return false;
+// Count individual attention issues for a deal (each issue = 1 toward the stat total)
+function countAttentionIssues(deal) {
+  if (!deal) return { count: 0, reasons: [] };
+  let count = 0;
+  const reasons = [];
+  if (deal.failedChecks > 0) {
+    count += deal.failedChecks;
+    reasons.push(`${deal.failedChecks} failed check${deal.failedChecks !== 1 ? 's' : ''}`);
+  }
+  if (deal.flagged > 0) {
+    count += deal.flagged;
+    reasons.push(`${deal.flagged} flagged applicant${deal.flagged !== 1 ? 's' : ''}`);
+  }
+  // Stalled: all expected members submitted but none fully screened
+  if (deal.totalMembers > 0 && deal.totalMembers >= (deal.expectedMemberCount || deal.totalMembers) && deal.screeningDone === 0) {
+    count += 1;
+    reasons.push('awaiting screening');
+  }
+  return { count, reasons };
 }
 
-function PortfolioStats({ buildings, unlinkedDeals }) {
+function StatWithDropdown({ children, label, rows, onNavigate, emptyText }) {
+  const [show, setShow] = useState(false);
+  const triggerRef = useRef(null);
+  const dropdownRef = useRef(null);
+  const closeTimer = useRef(null);
+  const [pos, setPos] = useState({ top: -9999, left: -9999 });
+
+  const reposition = useCallback(() => {
+    if (!triggerRef.current || !dropdownRef.current) return;
+    const tr = triggerRef.current.getBoundingClientRect();
+    const dr = dropdownRef.current.getBoundingClientRect();
+    const pad = 8;
+
+    let left = tr.left + tr.width / 2 - dr.width / 2;
+    left = Math.max(pad, Math.min(left, window.innerWidth - dr.width - pad));
+
+    let top = tr.bottom + 4;
+    if (top + dr.height > window.innerHeight - pad) {
+      top = tr.top - dr.height - 4;
+    }
+    top = Math.max(pad, top);
+
+    setPos({ top, left });
+  }, []);
+
+  useLayoutEffect(() => {
+    if (show) reposition();
+  }, [show, reposition]);
+
+  useEffect(() => {
+    if (!show) return;
+    function handleDown(e) {
+      if (triggerRef.current?.contains(e.target)) return;
+      if (dropdownRef.current?.contains(e.target)) return;
+      setShow(false);
+    }
+    document.addEventListener('mousedown', handleDown);
+    document.addEventListener('touchstart', handleDown);
+    return () => {
+      document.removeEventListener('mousedown', handleDown);
+      document.removeEventListener('touchstart', handleDown);
+    };
+  }, [show]);
+
+  // Delayed close: gives the mouse time to cross the gap between trigger and dropdown
+  function scheduleClose() {
+    closeTimer.current = setTimeout(() => setShow(false), 120);
+  }
+  function cancelClose() {
+    if (closeTimer.current) { clearTimeout(closeTimer.current); closeTimer.current = null; }
+  }
+
+  const empty = !rows || rows.length === 0;
+
+  const dropdown = show && createPortal(
+    <div
+      ref={dropdownRef}
+      className="stat-dropdown"
+      style={{ position: 'fixed', top: pos.top, left: pos.left }}
+      onMouseEnter={cancelClose}
+      onMouseLeave={scheduleClose}
+    >
+      {empty ? (
+        <div className="stat-dropdown-empty">{emptyText || `No ${label.toLowerCase()}`}</div>
+      ) : rows.map((row, i) => (
+        <div
+          key={i}
+          className={`stat-dropdown-row${row.projectId ? ' stat-dropdown-row-clickable' : ''}`}
+          onClick={row.projectId ? (e) => { e.stopPropagation(); setShow(false); onNavigate(row.projectId); } : undefined}
+        >
+          <span className="stat-dropdown-name">{row.name}</span>
+          <span className="stat-dropdown-detail" style={row.detailColor ? { color: row.detailColor } : undefined}>
+            {row.detail}
+          </span>
+        </div>
+      ))}
+    </div>,
+    document.body
+  );
+
+  return (
+    <>
+      <div
+        className="portfolio-stat portfolio-stat-hoverable"
+        ref={triggerRef}
+        onMouseEnter={() => { cancelClose(); setShow(true); }}
+        onMouseLeave={scheduleClose}
+        onClick={(e) => { e.stopPropagation(); cancelClose(); setShow((v) => !v); }}
+      >
+        {children}
+        <span className="portfolio-stat-label">{label}</span>
+      </div>
+      {dropdown}
+    </>
+  );
+}
+
+function PortfolioStats({ buildings, unlinkedDeals, onNavigate }) {
   const stats = useMemo(() => {
-    let revenue = 0, totalApplicants = 0, screenedApplicants = 0, dtiSum = 0, dtiCount = 0, vacant = 0, attention = 0;
+    let revenue = 0, totalApplicants = 0, screenedApplicants = 0, activeApps = 0, vacant = 0, attention = 0;
+    const screenedBreakdown = [];
+    const activeAppsBreakdown = [];
+    const vacantBreakdown = [];
+    const attentionBreakdown = [];
+
     for (const b of buildings) {
+      const bLabel = b.name || b.address;
       for (const u of b.units) {
+        const unitLabel = u.name ? `${bLabel} Unit ${u.name}` : bLabel;
         if (u.deal) {
           revenue += u.monthlyCost || 0;
           totalApplicants += u.deal.totalMembers || 0;
           screenedApplicants += u.deal.screeningDone || 0;
-          if (u.deal.groupDTI != null) { dtiSum += u.deal.groupDTI; dtiCount++; }
-          if (needsAttention(u.deal)) attention++;
+          if (u.deal.stage !== 'approved' && u.deal.stage !== 'empty') {
+            activeApps++;
+            const stageCfg = STAGE_CONFIG[u.deal.stage] || STAGE_CONFIG.in_progress;
+            activeAppsBreakdown.push({
+              name: unitLabel,
+              detail: stageCfg.label,
+              detailColor: stageCfg.color,
+              projectId: u.deal.projectId,
+            });
+          }
+          const allDone = u.deal.screeningDone === u.deal.totalMembers;
+          screenedBreakdown.push({
+            name: unitLabel,
+            detail: `${u.deal.screeningDone} of ${u.deal.totalMembers}`,
+            detailColor: allDone ? 'var(--success)' : undefined,
+            projectId: u.deal.projectId,
+          });
+          const issues = countAttentionIssues(u.deal);
+          if (issues.count > 0) {
+            attention += issues.count;
+            attentionBreakdown.push({
+              name: unitLabel,
+              detail: issues.reasons.join(', '),
+              detailColor: 'var(--error)',
+              projectId: u.deal.projectId,
+            });
+          }
         } else {
           vacant++;
+          vacantBreakdown.push({ name: unitLabel, detail: 'Vacant', detailColor: 'var(--warning)' });
         }
       }
     }
     for (const d of unlinkedDeals) {
       totalApplicants += d.totalMembers || 0;
       screenedApplicants += d.screeningDone || 0;
-      if (d.groupDTI != null) { dtiSum += d.groupDTI; dtiCount++; }
-      if (needsAttention(d)) attention++;
+      if (d.stage !== 'approved' && d.stage !== 'empty') {
+        activeApps++;
+        const stageCfg = STAGE_CONFIG[d.stage] || STAGE_CONFIG.in_progress;
+        activeAppsBreakdown.push({
+          name: d.name,
+          detail: stageCfg.label,
+          detailColor: stageCfg.color,
+          projectId: d.projectId || d._id,
+        });
+      }
+      const dAllDone = d.screeningDone === d.totalMembers;
+      screenedBreakdown.push({
+        name: d.name,
+        detail: `${d.screeningDone} of ${d.totalMembers}`,
+        detailColor: dAllDone ? 'var(--success)' : undefined,
+        projectId: d.projectId || d._id,
+      });
+      const dIssues = countAttentionIssues(d);
+      if (dIssues.count > 0) {
+        attention += dIssues.count;
+        attentionBreakdown.push({
+          name: d.name,
+          detail: dIssues.reasons.join(', '),
+          detailColor: 'var(--error)',
+          projectId: d.projectId || d._id,
+        });
+      }
     }
-    const avgDTI = dtiCount > 0 ? dtiSum / dtiCount : null;
-    return { revenue, totalApplicants, screenedApplicants, avgDTI, vacant, attention };
+    return { revenue, totalApplicants, screenedApplicants, activeApps, vacant, attention, screenedBreakdown, activeAppsBreakdown, vacantBreakdown, attentionBreakdown };
   }, [buildings, unlinkedDeals]);
 
-  const dtiColor = stats.avgDTI == null ? 'var(--text-primary)'
-    : stats.avgDTI <= 0.36 ? 'var(--success)' : stats.avgDTI <= 0.43 ? 'var(--warning)' : 'var(--error)';
   const allScreened = stats.totalApplicants > 0 && stats.screenedApplicants === stats.totalApplicants;
 
   return (
@@ -105,104 +271,122 @@ function PortfolioStats({ buildings, unlinkedDeals }) {
         <span className="portfolio-stat-value">${stats.revenue.toLocaleString()}</span>
         <span className="portfolio-stat-label">Revenue</span>
       </div>
-      <div className="portfolio-stat">
+      <StatWithDropdown label="Screened" rows={stats.screenedBreakdown} onNavigate={onNavigate} emptyText="No applicants yet">
         <span className="portfolio-stat-value" style={{ color: allScreened ? 'var(--success)' : 'var(--text-primary)' }}>
           {stats.screenedApplicants} of {stats.totalApplicants}
         </span>
-        <span className="portfolio-stat-label">Screened</span>
-      </div>
-      <div className="portfolio-stat">
-        <span className="portfolio-stat-value" style={{ color: dtiColor }}>
-          {stats.avgDTI != null ? `${(stats.avgDTI * 100).toFixed(1)}%` : '--'}
+      </StatWithDropdown>
+      <StatWithDropdown label="Active Apps" rows={stats.activeAppsBreakdown} onNavigate={onNavigate} emptyText="No active applications">
+        <span className="portfolio-stat-value" style={{ color: stats.activeApps > 0 ? 'var(--primary)' : 'var(--text-primary)' }}>
+          {stats.activeApps}
         </span>
-        <span className="portfolio-stat-label">Portfolio DTI</span>
-      </div>
-      <div className="portfolio-stat">
+      </StatWithDropdown>
+      <StatWithDropdown label="Vacant" rows={stats.vacantBreakdown} onNavigate={onNavigate} emptyText="No vacant units">
         <span className="portfolio-stat-value" style={{ color: stats.vacant > 0 ? 'var(--warning)' : 'var(--success)' }}>
           {stats.vacant}
         </span>
-        <span className="portfolio-stat-label">Vacant</span>
-      </div>
-      <div className="portfolio-stat">
+      </StatWithDropdown>
+      <StatWithDropdown label="Needs Attention" rows={stats.attentionBreakdown} onNavigate={onNavigate} emptyText="No issues found">
         <span className="portfolio-stat-value" style={{ color: stats.attention > 0 ? 'var(--error)' : 'var(--text-primary)' }}>
           {stats.attention}
         </span>
-        <span className="portfolio-stat-label">Needs Attention</span>
-      </div>
+      </StatWithDropdown>
     </div>
   );
 }
 
-function ActivityCallout({ buildings }) {
-  const text = useMemo(() => {
-    if (!buildings || buildings.length === 0) return null;
+function computeFallbackActivity(buildings) {
+  if (!buildings || buildings.length === 0) return { whatsNew: null, whatsNeeded: null };
 
-    // Collect all events from deals
-    const events = [];
-    for (const b of buildings) {
-      for (const u of b.units) {
-        if (!u.deal) continue;
-        const bLabel = b.name || b.address;
-        const unitLabel = u.name ? `${bLabel} Unit ${u.name}` : bLabel;
-        events.push({
-          unitLabel,
-          deal: u.deal,
-          lastActivity: new Date(u.deal.lastActivity),
-          stage: u.deal.stage,
-          riskFlags: u.deal.riskFlags || [],
-          totalMembers: u.deal.totalMembers,
-          screeningDone: u.deal.screeningDone,
-        });
-      }
+  const events = [];
+  for (const b of buildings) {
+    for (const u of b.units) {
+      if (!u.deal) continue;
+      const bLabel = b.name || b.address;
+      const unitLabel = u.name ? `${bLabel} Unit ${u.name}` : bLabel;
+      events.push({
+        unitLabel,
+        deal: u.deal,
+        lastActivity: new Date(u.deal.lastActivity),
+        stage: u.deal.stage,
+        riskFlags: u.deal.riskFlags || [],
+        totalMembers: u.deal.totalMembers,
+        screeningDone: u.deal.screeningDone,
+      });
     }
+  }
+  if (events.length === 0) return { whatsNew: null, whatsNeeded: null };
+  events.sort((a, b) => b.lastActivity - a.lastActivity);
 
-    if (events.length === 0) return null;
-    events.sort((a, b) => b.lastActivity - a.lastActivity);
+  // Fallback "Recent Activity" — 1 sentence
+  const latest = events[0];
+  const timeStr = formatRelativeTime(latest.lastActivity);
+  const recentParts = [`${latest.unitLabel} last active ${timeStr} with ${latest.screeningDone} of ${latest.totalMembers} screened`];
+  const progressing = events.filter((e) => e.stage === 'approved' || e.stage === 'review');
+  if (progressing.length > 0) {
+    recentParts.push(`${progressing.map((e) => e.unitLabel).slice(0, 2).join(' and ')} in ${progressing[0].stage}`);
+  }
+  const whatsNew = recentParts.join(', ') + '.';
 
-    const sentences = [];
+  // Fallback "Action Required" — 1 sentence or null
+  const flagged = events.filter((e) => e.riskFlags.length > 0);
+  let whatsNeeded = null;
+  if (flagged.length > 0) {
+    const parts = flagged.slice(0, 3).map((e) => `${e.unitLabel}: ${e.riskFlags.join(', ')}`);
+    whatsNeeded = parts.join('; ') + '.';
+  }
 
-    // Sentence 1: what happened recently
-    const latest = events[0];
-    const timeStr = formatRelativeTime(latest.lastActivity);
-    sentences.push(
-      `${latest.unitLabel} was last active ${timeStr} with ${latest.totalMembers} applicant${latest.totalMembers !== 1 ? 's' : ''} and ${latest.screeningDone} fully screened.`
-    );
+  return { whatsNew, whatsNeeded };
+}
 
-    // Sentence 2: what needs attention
-    const flagged = events.filter((e) => e.riskFlags.length > 0);
-    if (flagged.length > 0) {
-      const labels = flagged.slice(0, 2).map((e) => e.unitLabel).join(' and ');
-      sentences.push(`${labels} need${flagged.length === 1 ? 's' : ''} attention: ${flagged[0].riskFlags.join(', ')}.`);
-    }
+function InsightCards({ insights, buildings }) {
+  const fallback = useMemo(() => computeFallbackActivity(buildings), [buildings]);
+  const recentActivity = insights?.whatsNew || fallback.whatsNew;
+  const actionRequired = insights?.whatsNeeded || fallback.whatsNeeded;
+  const noActions = !actionRequired || actionRequired === 'No actions required.' || actionRequired === 'No actions required';
 
-    // Sentence 3: what's progressing
-    const progressing = events.filter((e) => e.stage === 'approved' || e.stage === 'negotiating');
-    if (progressing.length > 0 && sentences.length < 3) {
-      const labels = progressing.slice(0, 2).map((e) => e.unitLabel).join(' and ');
-      sentences.push(`${labels} ${progressing.length === 1 ? 'is' : 'are'} in ${progressing[0].stage} stage.`);
-    }
+  if (!recentActivity && !actionRequired) return null;
 
-    return sentences.slice(0, 3).join(' ') || null;
-  }, [buildings]);
-
-  if (!text) return null;
   return (
-    <div className="breakdown-ai-callout" style={{ marginBottom: 4 }}>
-      <div className="breakdown-ai-header">
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2.5" strokeLinecap="round">
-          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-        </svg>
-        <span className="breakdown-ai-label">Activity</span>
+    <div className="insight-cards-grid">
+      {recentActivity && (
+        <div className="breakdown-ai-callout insight-card-new">
+          <div className="breakdown-ai-header">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2.5" strokeLinecap="round">
+              <circle cx="12" cy="12" r="10" />
+              <polyline points="12 6 12 12 16 14" />
+            </svg>
+            <span className="breakdown-ai-label">Recent Activity</span>
+          </div>
+          <div className="breakdown-ai-text">{recentActivity}</div>
+        </div>
+      )}
+      <div className={`breakdown-ai-callout ${noActions ? 'insight-card-clear' : 'insight-card-needed'}`}>
+        <div className="breakdown-ai-header">
+          {noActions ? (
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round">
+              <path d="M22 11.08V12a10 10 0 11-5.93-9.14" />
+              <polyline points="22 4 12 14.01 9 11.01" />
+            </svg>
+          ) : (
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2.5" strokeLinecap="round">
+              <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+              <line x1="12" y1="9" x2="12" y2="13" />
+              <line x1="12" y1="17" x2="12.01" y2="17" />
+            </svg>
+          )}
+          <span className="breakdown-ai-label" style={{ color: noActions ? '#16a34a' : '#d97706' }}>Action Required</span>
+        </div>
+        <div className="breakdown-ai-text">{noActions ? 'No actions required.' : actionRequired}</div>
       </div>
-      <div className="breakdown-ai-text">{text}</div>
     </div>
   );
 }
 
-const STAGE_ORDER = ['screening', 'review', 'negotiating', 'approved'];
+const STAGE_ORDER = ['empty', 'in_progress', 'review', 'approved'];
 
 function buildingSummaryStage(units) {
-  const stages = units.filter((u) => u.deal).map((u) => u.deal.stage || 'screening');
+  const stages = units.filter((u) => u.deal).map((u) => u.deal.stage || 'empty');
   if (stages.length === 0) return null;
   // Return the earliest (least progressed) stage
   for (const s of STAGE_ORDER) {
@@ -274,7 +458,7 @@ function BuildingCard({ building, expanded, onToggle, onNavigate, onCreateDeal }
   // Collect deal stages for pills — deduplicate and order by urgency
   const dealStages = building.units
     .filter((u) => u.deal)
-    .map((u) => u.deal.stage || 'screening');
+    .map((u) => u.deal.stage || 'empty');
   const uniqueStages = STAGE_ORDER.filter((s) => dealStages.includes(s));
 
   return (
@@ -442,8 +626,8 @@ export default function Dashboard() {
             </div>
           ) : (
             <>
-              <PortfolioStats buildings={buildings} unlinkedDeals={unlinkedDeals} />
-              <ActivityCallout buildings={buildings} />
+              <PortfolioStats buildings={buildings} unlinkedDeals={unlinkedDeals} onNavigate={handleNavigate} />
+              <InsightCards insights={overview?.insights} buildings={buildings} />
 
               {totalAll > 1 && (
                 <div className="search-bar" style={{ marginBottom: 10 }}>

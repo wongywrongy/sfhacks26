@@ -81,7 +81,7 @@ async function getProject(req, res) {
     _id: project._id,
     name: project.name,
     status: project.status,
-    stage: project.stage || 'screening',
+    stage: project.stage || 'empty',
     priceRange: project.priceRange,
     estimatedMonthlyCost: project.estimatedMonthlyCost,
     location: project.location,

@@ -2,6 +2,12 @@ const { ObjectId } = require('mongodb');
 const buildingRepo = require('../repositories/building-repository');
 const projectRepo = require('../repositories/project-repository');
 const { BuildingType, CrsCheckStatus } = require('../../../shared/enums');
+const gemini = require('../wrappers/gemini-wrapper');
+const { getDb } = require('../db');
+
+// In-memory cache for homepage insights (5-minute TTL)
+const insightsCache = { data: null, timestamp: 0, generating: false };
+const INSIGHTS_TTL_MS = 5 * 60 * 1000;
 
 async function createBuilding(req, res) {
   const { address, city, state, type, units } = req.body;
@@ -94,7 +100,57 @@ async function getBuildingsOverview(req, res) {
     };
   });
 
-  res.json({ buildings: buildingsWithDeals, unlinkedDeals });
+  // Build portfolio summary for Gemini insights
+  const portfolioSummary = [];
+  for (const b of buildingsWithDeals) {
+    for (const u of b.units) {
+      if (!u.deal) continue;
+      const bLabel = b.name || b.address;
+      const unitLabel = u.name ? `${bLabel} Unit ${u.name}` : bLabel;
+      portfolioSummary.push({
+        propertyName: bLabel,
+        unitName: u.name || 'main',
+        stage: u.deal.stage,
+        totalMembers: u.deal.totalMembers,
+        screeningDone: u.deal.screeningDone,
+        failedChecks: u.deal.failedChecks,
+        riskFlags: u.deal.riskFlags,
+        lastActivity: u.deal.lastActivity,
+        approved: u.deal.approved,
+        flagged: u.deal.flagged,
+      });
+    }
+  }
+
+  // Serve cached insights, regenerate in background if stale
+  // On first load, try to hydrate from seeded collection
+  if (!insightsCache.data) {
+    try {
+      const seeded = await getDb().collection('homepage_insights').findOne({ orgId: req.orgId });
+      if (seeded) {
+        insightsCache.data = { whatsNew: seeded.whatsNew, whatsNeeded: seeded.whatsNeeded };
+        insightsCache.timestamp = new Date(seeded.generatedAt).getTime();
+      }
+    } catch (_) { /* ignore */ }
+  }
+
+  let insights = insightsCache.data;
+  const now = Date.now();
+  if (portfolioSummary.length > 0 && (now - insightsCache.timestamp > INSIGHTS_TTL_MS) && !insightsCache.generating) {
+    insightsCache.generating = true;
+    // Fire-and-forget: regenerate in background, never block response
+    gemini.generateHomepageInsights(portfolioSummary)
+      .then((result) => {
+        if (result.success) {
+          insightsCache.data = result.data;
+          insightsCache.timestamp = Date.now();
+        }
+      })
+      .catch(() => {})
+      .finally(() => { insightsCache.generating = false; });
+  }
+
+  res.json({ buildings: buildingsWithDeals, unlinkedDeals, insights: insights || null });
 }
 
 function summarizeDeal(project) {
@@ -135,7 +191,7 @@ function summarizeDeal(project) {
 
   return {
     projectId: project._id,
-    stage: project.stage || 'screening',
+    stage: project.stage || 'empty',
     totalMembers: members.length,
     screeningDone,
     expectedMemberCount: project.expectedMemberCount,

@@ -460,4 +460,54 @@ Respond with exactly 2-3 sentences of flowing prose. No JSON, no dashes, no list
   }
 }
 
-module.exports = { assessMember, assessGroup, analyzeModels, compileReport, generateApplicantReport, assessSafety, assessGroupSafety };
+// --- 7. Homepage Portfolio Insights ---
+
+async function generateHomepageInsights(portfolioData) {
+  try {
+    const dataBlock = JSON.stringify(portfolioData, null, 0);
+
+    // Call 1: Recent Activity — exactly 1 sentence
+    const recentPrompt = `You are a property management assistant. Given these properties and their recent activity, write exactly 1 sentence summarizing what changed recently. Reference specific property names, unit numbers, and timeframes. Focus on: new applicant submissions, completed checks, stage advances. Never mention financial data.
+
+Example tone: "3 new applications submitted to Dunder Mifflin Plaza in the last 2 hours, Schrute Farms moved to review."
+
+Portfolio data:
+${dataBlock}
+
+Write exactly 1 sentence. No dashes, no bullet points, no lists.`;
+
+    const recentText = await callGemini(recentPrompt, 200);
+
+    // Call 2: Action Required — exactly 1 sentence
+    // Check if there are any actual issues
+    const hasIssues = portfolioData.some((d) =>
+      d.failedChecks > 0 || d.flagged > 0 ||
+      (d.riskFlags && d.riskFlags.length > 0)
+    );
+
+    let actionText;
+    if (!hasIssues) {
+      actionText = 'No actions required.';
+    } else {
+      const actionPrompt = `You are a property management assistant. Given these properties and their issues, write exactly 1 sentence summarizing what requires the manager's intervention right now. Reference specific property names, unit numbers, and what action to take. Focus on: failed checks needing retry, flagged applicants, applications waiting too long. Never mention financial data.
+
+Example tone: "2 failed identity checks at Dunder Mifflin Plaza Unit 1A need retry, 1 flagged applicant at The Beasley Cottage awaiting review."
+
+Portfolio data:
+${dataBlock}
+
+Write exactly 1 sentence. No dashes, no bullet points, no lists. Be specific about properties, issues, and actions.`;
+
+      actionText = await callGemini(actionPrompt, 200);
+    }
+
+    return {
+      success: true,
+      data: { whatsNew: recentText.trim(), whatsNeeded: actionText.trim() },
+    };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+module.exports = { assessMember, assessGroup, analyzeModels, compileReport, generateApplicantReport, assessSafety, assessGroupSafety, generateHomepageInsights };

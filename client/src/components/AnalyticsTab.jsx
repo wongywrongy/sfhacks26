@@ -167,7 +167,7 @@ function RiskAnalysis({ analytics, dependencyInsight, removedIds, setRemovedIds 
                 </span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <span style={{ fontSize: 22, fontWeight: 900, letterSpacing: '-0.03em', fontVariantNumeric: 'tabular-nums', color: dtiColor(scenario.dti) }}>
+                <span style={{ fontSize: 20, fontWeight: 900, letterSpacing: '-0.03em', fontVariantNumeric: 'tabular-nums', color: dtiColor(scenario.dti) }}>
                   {pctFmt(scenario.dti)}
                 </span>
                 <span style={{ fontSize: 10, fontWeight: 700, color: dtiColor(scenario.dti) }}>
@@ -327,7 +327,7 @@ export default function AnalyticsTab({ projectId }) {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
           <span style={{ fontWeight: 800, fontSize: 14, letterSpacing: '-0.02em' }}>Group DTI</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 24, fontWeight: 900, letterSpacing: '-0.03em', fontVariantNumeric: 'tabular-nums', color: dtiColor(analytics.groupDTI) }}>
+            <span style={{ fontSize: 20, fontWeight: 900, letterSpacing: '-0.03em', fontVariantNumeric: 'tabular-nums', color: dtiColor(analytics.groupDTI) }}>
               {dtiPct}%
             </span>
             <span className={`status-badge badge-${dtiClass === 'healthy' ? 'green' : dtiClass === 'acceptable' ? 'amber' : 'red'}`}>
@@ -363,7 +363,7 @@ export default function AnalyticsTab({ projectId }) {
         <div className="breakdown-card" style={{ padding: '12px 14px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
             <span style={{ fontWeight: 800, fontSize: 14, letterSpacing: '-0.02em' }}>Income Diversity</span>
-            <span style={{ fontSize: 24, fontWeight: 900, color: 'var(--primary)', letterSpacing: '-0.03em' }}>{analytics.incomeDiversityScore}</span>
+            <span style={{ fontSize: 20, fontWeight: 900, color: 'var(--primary)', letterSpacing: '-0.03em' }}>{analytics.incomeDiversityScore}</span>
             <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
               {analytics.incomeDiversityScore >= 0.8 ? 'High — low correlated risk' : analytics.incomeDiversityScore >= 0.5 ? 'Moderate diversity' : 'Low — correlated risk'}
             </span>

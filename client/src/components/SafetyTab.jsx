@@ -107,7 +107,7 @@ function OverviewCard({ member }) {
       padding: '10px 14px', borderRadius: 10, background: 'var(--card-bg)',
       border: '1px solid var(--card-border)', minWidth: 80,
     }}>
-      <span style={{ fontSize: 12, fontWeight: 700 }}>{member.firstName} {member.lastInitial}.</span>
+      <span style={{ fontSize: 13, fontWeight: 700 }}>{member.firstName} {member.lastInitial}.</span>
       <div style={{ display: 'flex', gap: 8 }}>
         <div title={`Criminal: ${crimSeverity}`}><ShieldIcon color={SEVERITY_COLORS[crimSeverity]} /></div>
         <div title={`Eviction: ${evicSeverity}`}><HomeIcon color={SEVERITY_COLORS[evicSeverity]} /></div>
@@ -176,7 +176,7 @@ function IdentitySection({ data }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '6px 0' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <span style={{ fontSize: 24, fontWeight: 900, color: statusColor, letterSpacing: '-0.02em' }}>{data.cviScore ?? '—'}</span>
+        <span style={{ fontSize: 20, fontWeight: 900, color: statusColor, letterSpacing: '-0.02em' }}>{data.cviScore ?? '—'}</span>
         <div>
           <div style={{ fontSize: 10, fontWeight: 700, color: statusColor, textTransform: 'capitalize' }}>{data.verificationStatus}</div>
           <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>CVI Score</div>

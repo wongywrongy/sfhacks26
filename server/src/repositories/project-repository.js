@@ -21,7 +21,7 @@ async function createProject(projectData) {
     intakeLinkToken: projectData.intakeLinkToken,
     buildingId: projectData.buildingId || null,
     unitId: projectData.unitId || null,
-    stage: projectData.stage || 'screening',
+    stage: projectData.stage || 'empty',
     status: ProjectStatus.INTAKE,
     members: [],
     groupMetrics: null,

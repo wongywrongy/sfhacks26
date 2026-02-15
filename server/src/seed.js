@@ -159,7 +159,7 @@ const DEALS = [
     location: { city: 'Honesdale', state: 'PA' },
     expectedMemberCount: 3,
     intakeLinkToken: 'demo-schrute',
-    stage: 'negotiating',
+    stage: 'review',
     members: [
       {
         firstName: 'Alex', lastName: 'Torres', email: 'alex.torres@demo.commonground.co',
@@ -239,7 +239,7 @@ const DEALS = [
     location: { city: 'Scranton', state: 'PA' },
     expectedMemberCount: 3,
     intakeLinkToken: 'demo-dunder-1b',
-    stage: 'screening',
+    stage: 'in_progress',
     members: [
       {
         firstName: 'Keisha', lastName: 'Williams', email: 'keisha.williams@demo.commonground.co',
@@ -394,23 +394,31 @@ async function pullMemberCrsData(memberDef) {
   }
 
   // --- Identity ---
-  // Sandbox FlexID personas always return low CVI scores (0-10) because they're
-  // fictional people LexisNexis can't verify. Override with realistic demo values.
-  if (identityResult.success) {
-    const sandboxCvi = identityResult.data.cviScore;
-    const demoCvi = memberDef.demoCviScore ?? (sandboxCvi != null ? 40 : null);
-    const overridden = { ...identityResult.data, cviScore: demoCvi };
-    if (demoCvi === null) overridden.verificationStatus = 'failed';
-    else if (demoCvi > 30) overridden.verificationStatus = 'verified';
-    else if (demoCvi >= 15) overridden.verificationStatus = 'uncertain';
-    else overridden.verificationStatus = 'failed';
+  // Sandbox FlexID personas return low CVI scores (0-10) or may fail entirely
+  // because they're fictional people. Always override with demo values for seed data.
+  {
+    const demoCvi = memberDef.demoCviScore ?? 40;
+    let verificationStatus;
+    if (demoCvi > 30) verificationStatus = 'verified';
+    else if (demoCvi >= 15) verificationStatus = 'uncertain';
+    else verificationStatus = 'failed';
+
+    const baseData = identityResult.success ? identityResult.data : {};
+    const sandboxCvi = baseData.cviScore ?? null;
+    const overridden = {
+      ...baseData,
+      cviScore: demoCvi,
+      verificationStatus,
+      riskIndicators: baseData.riskIndicators || [],
+      verifiedElements: baseData.verifiedElements || null,
+    };
     member.identity = { status: 'complete', ...overridden };
     member.identityStructured = structureIdentity(overridden);
-    process.stdout.write(`      Identity: CVI ${demoCvi} (${overridden.verificationStatus}) [sandbox raw: ${sandboxCvi}]\n`);
-  } else {
-    member.identity = { status: 'failed', error: identityResult.error };
-    member.identityStructured = structureIdentity(null);
-    process.stdout.write(`      Identity: FAILED - ${identityResult.error}\n`);
+    if (identityResult.success) {
+      process.stdout.write(`      Identity: CVI ${demoCvi} (${verificationStatus}) [sandbox raw: ${sandboxCvi}]\n`);
+    } else {
+      process.stdout.write(`      Identity: CVI ${demoCvi} (${verificationStatus}) [API failed, using demo data]\n`);
+    }
   }
 
   return member;
@@ -843,6 +851,82 @@ async function seed() {
   }
 
   console.log(`\n--- Apartment Unit 2A left vacant (no deal) ---`);
+
+  // ── Generate homepage insights ──────────────────────────────
+  if (process.env.GEMINI_API_KEY) {
+    console.log('\n--- Generating homepage insights ---');
+    const allBuildings = await db.collection('buildings').find({ orgId: 'org-001' }).toArray();
+    const allProjects = await db.collection('projects').find({ orgId: 'org-001' }).toArray();
+
+    // Build deal map
+    const dealMap = new Map();
+    for (const p of allProjects) {
+      if (p.buildingId && p.unitId) dealMap.set(`${p.buildingId}:${p.unitId}`, p);
+    }
+
+    const portfolioSummary = [];
+    for (const b of allBuildings) {
+      for (const u of (b.units || [])) {
+        const project = dealMap.get(`${b._id}:${u._id}`);
+        if (!project) continue;
+        const members = project.members || [];
+        const allChecksComplete = (m) =>
+          m.credit?.status === 'complete' && m.criminal?.status === 'complete' &&
+          m.eviction?.status === 'complete' && m.identity?.status === 'complete';
+        const hasFailedCheck = (m) =>
+          m.credit?.status === 'failed' || m.criminal?.status === 'failed' ||
+          m.eviction?.status === 'failed' || m.identity?.status === 'failed';
+        const screeningDone = members.filter(allChecksComplete).length;
+        const failedChecks = members.filter(hasFailedCheck).length;
+        const riskFlags = [];
+        const creditMembers = members.filter((m) => m.credit?.status === 'complete' && m.credit?.score);
+        const subSixSeventy = creditMembers.filter((m) => m.credit.score < 670).length;
+        if (subSixSeventy > 0) riskFlags.push(`${subSixSeventy} sub-670 credit`);
+        const evictionRecords = members.filter((m) => (m.eviction?.records || []).length > 0).length;
+        if (evictionRecords > 0) riskFlags.push('eviction record');
+        if (failedChecks > 0) riskFlags.push(`${failedChecks} failed checks`);
+        const dates = members.map((m) => new Date(m.dateSubmitted)).concat([new Date(project.dateUpdated)]);
+        const lastActivity = new Date(Math.max(...dates));
+
+        const bLabel = b.name || b.address;
+        portfolioSummary.push({
+          propertyName: bLabel,
+          unitName: u.name || 'main',
+          stage: project.stage || 'empty',
+          totalMembers: members.length,
+          screeningDone,
+          failedChecks,
+          riskFlags,
+          lastActivity,
+          approved: members.filter((m) => m.orgStatus === 'approved').length,
+          flagged: members.filter((m) => m.orgStatus === 'flagged').length,
+        });
+      }
+    }
+
+    if (portfolioSummary.length > 0) {
+      const insightsResult = await callWithRetry(
+        () => gemini.generateHomepageInsights(portfolioSummary),
+        'Homepage insights'
+      );
+      if (insightsResult.success) {
+        // Store in a dedicated collection for the seed to pre-populate
+        await db.collection('homepage_insights').deleteMany({ orgId: 'org-001' });
+        await db.collection('homepage_insights').insertOne({
+          orgId: 'org-001',
+          ...insightsResult.data,
+          generatedAt: new Date(),
+        });
+        console.log('  Homepage insights stored');
+        console.log(`  What's New: ${insightsResult.data.whatsNew.slice(0, 80)}...`);
+        console.log(`  What Needs You: ${insightsResult.data.whatsNeeded.slice(0, 80)}...`);
+      } else {
+        console.log(`  Homepage insights failed: ${insightsResult.error}`);
+      }
+    }
+  } else {
+    console.log('\n--- Skipping homepage insights (no GEMINI_API_KEY) ---');
+  }
 
   await close();
   console.log('\nSeed complete.');

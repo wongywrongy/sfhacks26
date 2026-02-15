@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { api } from '../api';
 
 const MEMBER_COLORS = ['#2563eb', '#3b82f6', '#7c3aed', '#6366f1', '#1d4ed8'];
@@ -14,49 +15,80 @@ const MODEL_TOOLTIPS = {
 
 function ModelsHelpTooltip() {
   const [show, setShow] = useState(false);
-  const ref = useState(null);
-  const [pos, setPos] = useState({ top: 0, left: 0 });
-  const iconRef = useCallback((node) => {
-    ref[1] = node;
+  const triggerRef = useRef(null);
+  const tooltipRef = useRef(null);
+  const closeTimer = useRef(null);
+  const [pos, setPos] = useState({ top: -9999, left: -9999 });
+
+  const reposition = useCallback(() => {
+    if (!triggerRef.current || !tooltipRef.current) return;
+    const tr = triggerRef.current.getBoundingClientRect();
+    const tt = tooltipRef.current.getBoundingClientRect();
+    const pad = 8;
+
+    let left = tr.right - tt.width;
+    left = Math.max(pad, Math.min(left, window.innerWidth - tt.width - pad));
+
+    let top = tr.bottom + 8;
+    if (top + tt.height > window.innerHeight - pad) {
+      top = tr.top - tt.height - 8;
+    }
+    top = Math.max(pad, top);
+
+    setPos({ top, left });
   }, []);
 
-  function updatePos() {
-    const el = ref[1];
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    setPos({ top: rect.bottom + 8, left: Math.min(rect.right, window.innerWidth - 290) });
+  useLayoutEffect(() => {
+    if (show) reposition();
+  }, [show, reposition]);
+
+  function scheduleClose() {
+    closeTimer.current = setTimeout(() => setShow(false), 120);
+  }
+  function cancelClose() {
+    if (closeTimer.current) { clearTimeout(closeTimer.current); closeTimer.current = null; }
   }
 
-  return (
-    <span
-      ref={iconRef}
-      style={{ display: 'inline-flex', alignItems: 'center' }}
-      onMouseEnter={() => { updatePos(); setShow(true); }}
-      onMouseLeave={() => setShow(false)}
-      onClick={(e) => { e.stopPropagation(); updatePos(); setShow((v) => !v); }}
+  const tooltip = show && createPortal(
+    <div
+      ref={tooltipRef}
+      onMouseEnter={cancelClose}
+      onMouseLeave={scheduleClose}
+      style={{
+        position: 'fixed', top: pos.top, left: pos.left,
+        width: 280, padding: '10px 12px', borderRadius: 10, fontSize: 11, lineHeight: 1.55, fontWeight: 400,
+        background: 'var(--glass-bg)', backdropFilter: 'var(--glass-blur)', WebkitBackdropFilter: 'var(--glass-blur)',
+        border: 'var(--glass-border)', boxShadow: 'var(--glass-shadow)', zIndex: 9999,
+        display: 'flex', flexDirection: 'column', gap: 8,
+      }}
     >
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2.5" strokeLinecap="round" style={{ cursor: 'pointer', opacity: 0.45, flexShrink: 0 }}>
-        <circle cx="12" cy="12" r="10" />
-        <path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3" />
-        <line x1="12" y1="17" x2="12.01" y2="17" />
-      </svg>
-      {show && (
-        <div style={{
-          position: 'fixed', top: pos.top, left: pos.left, transform: 'translateX(-100%)',
-          width: 280, padding: '10px 12px', borderRadius: 10, fontSize: 11, lineHeight: 1.55, fontWeight: 400,
-          background: 'rgba(24, 24, 27, 0.92)', color: '#f4f4f5', backdropFilter: 'blur(8px)',
-          boxShadow: '0 4px 16px rgba(0,0,0,0.25)', zIndex: 9999,
-          display: 'flex', flexDirection: 'column', gap: 8,
-        }}>
-          {MODEL_KEYS.map((k) => (
-            <div key={k}>
-              <span style={{ fontWeight: 700, color: '#93c5fd' }}>{MODEL_NAMES[k]}</span>
-              <span style={{ color: '#a1a1aa' }}> — {MODEL_TOOLTIPS[k]}</span>
-            </div>
-          ))}
+      {MODEL_KEYS.map((k) => (
+        <div key={k}>
+          <span style={{ fontWeight: 700, color: 'var(--primary)' }}>{MODEL_NAMES[k]}</span>
+          <span style={{ color: 'var(--text-secondary)' }}> — {MODEL_TOOLTIPS[k]}</span>
         </div>
-      )}
-    </span>
+      ))}
+    </div>,
+    document.body
+  );
+
+  return (
+    <>
+      <span
+        ref={triggerRef}
+        style={{ display: 'inline-flex', alignItems: 'center' }}
+        onMouseEnter={() => { cancelClose(); setShow(true); }}
+        onMouseLeave={scheduleClose}
+        onClick={(e) => { e.stopPropagation(); cancelClose(); setShow((v) => !v); }}
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2.5" strokeLinecap="round" style={{ cursor: 'pointer', opacity: 0.45, flexShrink: 0 }}>
+          <circle cx="12" cy="12" r="10" />
+          <path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3" />
+          <line x1="12" y1="17" x2="12.01" y2="17" />
+        </svg>
+      </span>
+      {tooltip}
+    </>
   );
 }
 
@@ -357,7 +389,7 @@ export default function ContributionsTab({ projectId, members, estimatedMonthlyC
                   <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{fmt(income)}/mo</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 18, fontWeight: 900, letterSpacing: '-0.03em', fontVariantNumeric: 'tabular-nums' }}>{fmt(m.paymentAmount)}</span>
+                  <span style={{ fontSize: 20, fontWeight: 900, letterSpacing: '-0.03em', fontVariantNumeric: 'tabular-nums' }}>{fmt(m.paymentAmount)}</span>
                   {m.percentageOfIncome != null && (
                     <span style={{ fontSize: 10, fontWeight: 600, color: over ? 'var(--error)' : 'var(--text-secondary)' }}>{pctFmt(m.percentageOfIncome)}</span>
                   )}

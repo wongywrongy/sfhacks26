@@ -200,7 +200,7 @@ export default function ReportTab({ projectId }) {
       {/* Brief insight after generation */}
       {generated && (
         <div className="glass-card" style={{ padding: '0.75rem 1rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ fontSize: '0.85rem', opacity: 0.7 }}>
+          <span style={{ fontSize: 13, opacity: 0.7 }}>
             {applicantReports.length} report{applicantReports.length !== 1 ? 's' : ''} generated
             {report.selectedModelName ? ` using ${report.selectedModelName} split` : ''}
             {' \u2014 '}
@@ -281,13 +281,13 @@ export default function ReportTab({ projectId }) {
                       width: 36, height: 36, borderRadius: '50%',
                       background: 'rgba(99, 102, 241, 0.15)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: '0.875rem', fontWeight: 600, color: '#818cf8',
+                      fontSize: 14, fontWeight: 600, color: '#818cf8',
                     }}>
                       {r.memberName?.[0]?.toUpperCase() || '?'}
                     </div>
                     <div>
-                      <div style={{ fontWeight: 600, fontSize: '0.925rem' }}>{r.memberName}</div>
-                      <div style={{ fontSize: '0.8rem', opacity: 0.6 }}>{r.employmentType}</div>
+                      <div style={{ fontWeight: 600, fontSize: 14 }}>{r.memberName}</div>
+                      <div style={{ fontSize: 13, opacity: 0.6 }}>{r.employmentType}</div>
                     </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -296,7 +296,7 @@ export default function ReportTab({ projectId }) {
                     </span>
                     <button
                       className="btn btn-secondary"
-                      style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem' }}
+                      style={{ padding: '0.4rem 0.75rem', fontSize: 13 }}
                       onClick={() => setPreviewMemberId(r.memberId)}
                     >
                       Preview
@@ -304,7 +304,7 @@ export default function ReportTab({ projectId }) {
                     {r.status === 'generated' && (
                       <button
                         className="btn btn-primary"
-                        style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem' }}
+                        style={{ padding: '0.4rem 0.75rem', fontSize: 13 }}
                         onClick={() => handleRelease(r.memberId)}
                         disabled={releasingId === r.memberId}
                       >
@@ -314,7 +314,7 @@ export default function ReportTab({ projectId }) {
                     {(r.status === 'released' || r.status === 'viewed') && r.reportToken && (
                       <button
                         className="btn btn-secondary"
-                        style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem' }}
+                        style={{ padding: '0.4rem 0.75rem', fontSize: 13 }}
                         onClick={() => {
                           navigator.clipboard.writeText(`${window.location.origin}/report/${r.reportToken}`);
                         }}

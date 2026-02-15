@@ -938,7 +938,7 @@
 }
 
 .profile-section-title {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.8px;
@@ -1123,7 +1123,7 @@
 }
 
 .fin-stat-value {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 800;
   color: var(--text-primary);
   letter-spacing: -0.03em;
@@ -1131,7 +1131,7 @@
 }
 
 .fin-stat-label {
-  font-size: 11px;
+  font-size: 10px;
   color: var(--text-muted);
   font-weight: 500;
   margin-top: 1px;
@@ -2564,7 +2564,7 @@
 }
 
 .breakdown-ai-label {
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
   color: var(--primary);
   text-transform: uppercase;
@@ -2783,7 +2783,7 @@
 }
 
 .people-stat-label {
-  font-size: 9px;
+  font-size: 10px;
   color: var(--text-muted);
   font-weight: 500;
   text-transform: uppercase;
@@ -2998,7 +2998,7 @@
 }
 
 .overlay-metric-label {
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -3006,7 +3006,7 @@
 }
 
 .overlay-metric-value {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 900;
   color: var(--text-primary);
   letter-spacing: -0.03em;
@@ -3530,7 +3530,7 @@
 }
 
 .bh-stat-label {
-  font-size: 9px;
+  font-size: 10px;
   text-transform: uppercase;
   color: var(--text-muted);
   font-weight: 500;
@@ -3979,6 +3979,100 @@
 
   .portfolio-stat {
     min-width: 33%;
+  }
+}
+
+/* Insight cards grid */
+.insight-cards-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.insight-card-needed {
+  background: linear-gradient(135deg, rgba(217, 119, 6, 0.04), rgba(245, 158, 11, 0.03)) !important;
+  border-color: rgba(217, 119, 6, 0.10) !important;
+  border-left-color: rgba(217, 119, 6, 0.25) !important;
+}
+
+.insight-card-clear {
+  background: linear-gradient(135deg, rgba(22, 163, 106, 0.03), rgba(34, 197, 94, 0.02)) !important;
+  border-color: rgba(22, 163, 106, 0.10) !important;
+  border-left-color: rgba(22, 163, 106, 0.25) !important;
+}
+
+/* Stat dropdown */
+.portfolio-stat-hoverable {
+  cursor: pointer;
+  position: relative;
+}
+
+.portfolio-stat-hoverable:hover {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.stat-dropdown {
+  z-index: 9999;
+  min-width: 260px;
+  max-width: 380px;
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: var(--glass-border);
+  border-radius: var(--subglass-radius);
+  box-shadow: var(--glass-shadow);
+  padding: 6px 0;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.stat-dropdown-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 14px;
+  font-size: 12px;
+  color: var(--text-primary);
+  line-height: 1.4;
+}
+
+.stat-dropdown-name {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.stat-dropdown-detail {
+  font-weight: 500;
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.stat-dropdown-empty {
+  padding: 10px 14px;
+  font-size: 12px;
+  color: var(--text-muted);
+  font-style: italic;
+  text-align: center;
+}
+
+.stat-dropdown-row-clickable {
+  cursor: pointer;
+}
+
+.stat-dropdown-row-clickable:hover {
+  background: var(--primary-subtle);
+}
+
+@media (max-width: 768px) {
+  .insight-cards-grid {
+    grid-template-columns: 1fr;
   }
 }
 

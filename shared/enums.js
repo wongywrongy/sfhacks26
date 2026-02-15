@@ -43,9 +43,9 @@ const ContributionModelType = Object.freeze({
 });
 
 const DealStage = Object.freeze({
-  SCREENING: 'screening',
+  EMPTY: 'empty',
+  IN_PROGRESS: 'in_progress',
   REVIEW: 'review',
-  NEGOTIATING: 'negotiating',
   APPROVED: 'approved',
 });
 
