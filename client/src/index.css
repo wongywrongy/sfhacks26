@@ -13,9 +13,16 @@ body {
   background: linear-gradient(135deg, #f0f5ff 0%, #c9ddfb 45%, #aecdfb 100%);
   background-attachment: fixed;
   color: #18181b;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 400;
   line-height: 1.5;
+}
+
+@media (min-width: 1600px) {
+  body { font-size: 16px; }
+}
+@media (min-width: 1920px) {
+  body { font-size: 17px; }
 }
 
 h1, h2, h3, h4, h5, h6 {

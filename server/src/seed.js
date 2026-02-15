@@ -117,7 +117,7 @@ const DEALS = [
     buildingIdx: 0, unitIdx: 0,
     estimatedMonthlyCost: 3400,
     location: { city: 'Scranton', state: 'PA' },
-    expectedMemberCount: 2,
+    expectedMemberCount: 3,
     intakeLinkToken: 'demo-halpert',
     stage: 'approved',
     members: [
@@ -139,6 +139,15 @@ const DEALS = [
         creditPersona: CREDIT.BLACK, criminalPersona: CRIMINAL.CONSUMER,
         evictionPersona: EVICTION.RAY_CLEAN, flexidPersona: FLEXID.COPE, demoCviScore: 38,
       },
+      {
+        firstName: 'Tariq', lastName: 'Hassan', email: 'tariq.hassan@demo.commonground.co',
+        monthlyIncome: 5200, employmentType: 'government',
+        orgStatus: 'approved',
+        orgNotes: 'Public transit supervisor. Unionized government position with steady income.',
+        dateSubmitted: new Date(Date.now() - 7 * DAY),
+        creditPersona: CREDIT.BARABAS, criminalPersona: CRIMINAL.CHUANG,
+        evictionPersona: EVICTION.RAY_CLEAN, flexidPersona: FLEXID.GOODLEY, demoCviScore: 39,
+      },
     ],
   },
 
@@ -148,7 +157,7 @@ const DEALS = [
     buildingIdx: 1, unitIdx: 0,
     estimatedMonthlyCost: 3200,
     location: { city: 'Honesdale', state: 'PA' },
-    expectedMemberCount: 2,
+    expectedMemberCount: 3,
     intakeLinkToken: 'demo-schrute',
     stage: 'negotiating',
     members: [
@@ -170,6 +179,15 @@ const DEALS = [
         creditPersona: CREDIT.BEAUPRE, criminalPersona: CRIMINAL.BORNSTEIN,
         evictionPersona: EVICTION.BORNSTEIN, flexidPersona: FLEXID.GIDI, demoCviScore: 12,
       },
+      {
+        firstName: 'Marco', lastName: 'Delgado', email: 'marco.delgado@demo.commonground.co',
+        monthlyIncome: 2900, employmentType: 'gig',
+        orgStatus: 'approved',
+        orgNotes: 'Food delivery + odd jobs. Irregular income stream, eviction history.',
+        dateSubmitted: new Date(Date.now() - 4 * DAY),
+        creditPersona: CREDIT.BARABAS, criminalPersona: CRIMINAL.BORNSTEIN,
+        evictionPersona: EVICTION.CHUANG, flexidPersona: FLEXID.COPE, demoCviScore: 18,
+      },
     ],
   },
 
@@ -179,7 +197,7 @@ const DEALS = [
     buildingIdx: 2, unitIdx: 0,
     estimatedMonthlyCost: 2400,
     location: { city: 'Scranton', state: 'PA' },
-    expectedMemberCount: 2,
+    expectedMemberCount: 3,
     intakeLinkToken: 'demo-dunder-1a',
     stage: 'review',
     members: [
@@ -201,6 +219,15 @@ const DEALS = [
         creditPersona: CREDIT.BARABAS, criminalPersona: CRIMINAL.BRANDIS,
         evictionPersona: EVICTION.RAY_CLEAN, flexidPersona: FLEXID.JJUNIPER, demoCviScore: 40,
       },
+      {
+        firstName: 'Lena', lastName: 'Kowalski', email: 'lena.kowalski@demo.commonground.co',
+        monthlyIncome: 3900, employmentType: 'freelance',
+        orgStatus: 'approved',
+        orgNotes: 'Freelance graphic designer. Consistent client base, moderate income.',
+        dateSubmitted: new Date(Date.now() - 5 * DAY),
+        creditPersona: CREDIT.BLACK, criminalPersona: CRIMINAL.CONSUMER,
+        evictionPersona: EVICTION.RAY_CLEAN, flexidPersona: FLEXID.COPE, demoCviScore: 37,
+      },
     ],
   },
 
@@ -210,7 +237,7 @@ const DEALS = [
     buildingIdx: 2, unitIdx: 1,
     estimatedMonthlyCost: 2400,
     location: { city: 'Scranton', state: 'PA' },
-    expectedMemberCount: 2,
+    expectedMemberCount: 3,
     intakeLinkToken: 'demo-dunder-1b',
     stage: 'screening',
     members: [
@@ -232,6 +259,15 @@ const DEALS = [
         creditPersona: CREDIT.BARABAS, criminalPersona: CRIMINAL.CHUANG,
         evictionPersona: EVICTION.RAY_CLEAN, flexidPersona: FLEXID.GIDI, demoCviScore: 34,
       },
+      {
+        firstName: 'Rosa', lastName: 'Medina', email: 'rosa.medina@demo.commonground.co',
+        monthlyIncome: 3500, employmentType: 'salary',
+        orgStatus: 'approved',
+        orgNotes: 'Dental hygienist. Consistent salaried income with benefits.',
+        dateSubmitted: new Date(Date.now() - 2 * DAY),
+        creditPersona: CREDIT.BAMBIKO, criminalPersona: CRIMINAL.BRANDIS,
+        evictionPersona: EVICTION.RAY_CLEAN, flexidPersona: FLEXID.JJUNIPER, demoCviScore: 41,
+      },
     ],
   },
 
@@ -243,7 +279,7 @@ const DEALS = [
     buildingIdx: 3, unitIdx: 0,
     estimatedMonthlyCost: 2800,
     location: { city: 'Scranton', state: 'PA' },
-    expectedMemberCount: 2,
+    expectedMemberCount: 3,
     intakeLinkToken: 'demo-beasley',
     stage: 'approved',
     members: [
@@ -264,6 +300,15 @@ const DEALS = [
         dateSubmitted: new Date(Date.now() - 11 * DAY),
         creditPersona: CREDIT.BAMBIKO, criminalPersona: CRIMINAL.BRANDIS,
         evictionPersona: EVICTION.RAY_CLEAN, flexidPersona: FLEXID.COPE, demoCviScore: 40,
+      },
+      {
+        firstName: 'Dion', lastName: 'Carter', email: 'dion.carter@demo.commonground.co',
+        monthlyIncome: 4100, employmentType: 'salaried',
+        orgStatus: 'approved',
+        orgNotes: 'Hospital pharmacy technician. Reliable salaried income with overtime.',
+        dateSubmitted: new Date(Date.now() - 10 * DAY),
+        creditPersona: CREDIT.BARABAS, criminalPersona: CRIMINAL.CHUANG,
+        evictionPersona: EVICTION.RAY_CLEAN, flexidPersona: FLEXID.GIDI, demoCviScore: 36,
       },
     ],
   },
@@ -306,7 +351,7 @@ async function pullMemberCrsData(memberDef) {
 
   // --- Credit ---
   if (creditResult.success) {
-    member.credit = creditResult.data;
+    member.credit = { status: 'complete', ...creditResult.data };
     const obligations = creditResult.data.monthlyObligations || 0;
     member.personalDTI = memberDef.monthlyIncome > 0
       ? Math.round((obligations / memberDef.monthlyIncome) * 10000) / 10000
@@ -326,7 +371,7 @@ async function pullMemberCrsData(memberDef) {
 
   // --- Criminal ---
   if (criminalResult.success) {
-    member.criminal = criminalResult.data;
+    member.criminal = { status: 'complete', ...criminalResult.data };
     member.criminalStructured = structureCriminalRecords(criminalResult.data.records || []);
     const count = (criminalResult.data.records || []).length;
     process.stdout.write(`      Criminal: ${count} record(s)${count > 0 ? ' !' : ''}\n`);
@@ -338,7 +383,7 @@ async function pullMemberCrsData(memberDef) {
 
   // --- Eviction ---
   if (evictionResult.success) {
-    member.eviction = evictionResult.data;
+    member.eviction = { status: 'complete', ...evictionResult.data };
     member.evictionStructured = structureEvictionRecords(evictionResult.data.records || []);
     const count = (evictionResult.data.records || []).length;
     process.stdout.write(`      Eviction: ${count} record(s)${count > 0 ? ' !' : ''}\n`);
@@ -359,7 +404,7 @@ async function pullMemberCrsData(memberDef) {
     else if (demoCvi > 30) overridden.verificationStatus = 'verified';
     else if (demoCvi >= 15) overridden.verificationStatus = 'uncertain';
     else overridden.verificationStatus = 'failed';
-    member.identity = overridden;
+    member.identity = { status: 'complete', ...overridden };
     member.identityStructured = structureIdentity(overridden);
     process.stdout.write(`      Identity: CVI ${demoCvi} (${overridden.verificationStatus}) [sandbox raw: ${sandboxCvi}]\n`);
   } else {

@@ -45,6 +45,7 @@ async function processCrsCalls(projectId, memberId, memberData) {
 
   if (creditResult.success) {
     creditData = creditResult.data;
+    setFields['members.$.credit.status'] = CrsCheckStatus.COMPLETE;
     for (const [k, v] of Object.entries(creditData)) {
       setFields[`members.$.credit.${k}`] = v;
     }
@@ -63,6 +64,7 @@ async function processCrsCalls(projectId, memberId, memberData) {
 
   let structuredCriminal = null;
   if (criminalResult.success) {
+    setFields['members.$.criminal.status'] = CrsCheckStatus.COMPLETE;
     for (const [k, v] of Object.entries(criminalResult.data)) {
       setFields[`members.$.criminal.${k}`] = v;
     }
@@ -75,6 +77,7 @@ async function processCrsCalls(projectId, memberId, memberData) {
 
   let structuredEviction = null;
   if (evictionResult.success) {
+    setFields['members.$.eviction.status'] = CrsCheckStatus.COMPLETE;
     for (const [k, v] of Object.entries(evictionResult.data)) {
       setFields[`members.$.eviction.${k}`] = v;
     }
@@ -87,6 +90,7 @@ async function processCrsCalls(projectId, memberId, memberData) {
 
   let structuredIdentityData = null;
   if (identityResult.success) {
+    setFields['members.$.identity.status'] = CrsCheckStatus.COMPLETE;
     for (const [k, v] of Object.entries(identityResult.data)) {
       setFields[`members.$.identity.${k}`] = v;
     }
@@ -180,7 +184,7 @@ async function retryCrsChecks(projectId, memberId) {
 
   for (const { type, result } of results) {
     if (result.success) {
-      await repo.updateMemberCrsResults(projectId, memberId, type, result.data);
+      await repo.updateMemberCrsResults(projectId, memberId, type, { status: CrsCheckStatus.COMPLETE, ...result.data });
     } else {
       await repo.updateMemberCrsResults(projectId, memberId, type, {
         status: CrsCheckStatus.FAILED,

@@ -235,7 +235,7 @@ function MemberCard({ member }) {
       <CollapsibleSection
         title={`Criminal Records${hasCrim ? ` (${member.criminalStructured.summary.totalRecords})` : ''}`}
         icon={<ShieldIcon color={SEVERITY_COLORS[crimSeverity]} />}
-        defaultOpen={hasCrim}
+        defaultOpen={false}
       >
         <CriminalSection data={member.criminalStructured} />
       </CollapsibleSection>
@@ -243,7 +243,7 @@ function MemberCard({ member }) {
       <CollapsibleSection
         title={`Eviction Records${hasEvic ? ` (${member.evictionStructured.summary.totalFilings})` : ''}`}
         icon={<HomeIcon color={SEVERITY_COLORS[evicSeverity]} />}
-        defaultOpen={hasEvic}
+        defaultOpen={false}
       >
         <EvictionSection data={member.evictionStructured} />
       </CollapsibleSection>
@@ -267,6 +267,7 @@ export default function SafetyTab({ projectId }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const fetchSafety = useCallback(() => {
     setLoading(true);
@@ -299,6 +300,13 @@ export default function SafetyTab({ projectId }) {
 
   if (!data) return null;
 
+  const q = searchQuery.toLowerCase().trim();
+  const filtered = q
+    ? data.members.filter((m) =>
+        `${m.firstName} ${m.lastInitial}`.toLowerCase().includes(q)
+      )
+    : data.members;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       {/* Disclaimer bar */}
@@ -327,10 +335,32 @@ export default function SafetyTab({ projectId }) {
         <AiCallout label="Group Safety Overview">{data.aiSafetyOverview.overview}</AiCallout>
       )}
 
+      {/* Search bar */}
+      {data.members.length > 1 && (
+        <div className="search-bar">
+          <svg className="search-bar-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+          <input
+            type="text"
+            placeholder="Search by name..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          {q && <span className="search-bar-count">{filtered.length} of {data.members.length}</span>}
+          {q && <button className="search-bar-clear" onClick={() => setSearchQuery('')}>&times;</button>}
+        </div>
+      )}
+
       {/* Per-person expandable cards */}
-      {data.members.map((m) => (
-        <MemberCard key={m._id} member={m} />
-      ))}
+      {q && filtered.length === 0 ? (
+        <div className="search-empty-state">
+          <span>&#128269;</span>
+          <span>No results for &ldquo;{searchQuery}&rdquo;</span>
+        </div>
+      ) : (
+        filtered.map((m) => (
+          <MemberCard key={m._id} member={m} />
+        ))
+      )}
     </div>
   );
 }

@@ -6,6 +6,59 @@ const MEMBER_COLORS = ['#2563eb', '#3b82f6', '#7c3aed', '#6366f1', '#1d4ed8'];
 const MODEL_KEYS = ['equal', 'proportional', 'hybrid'];
 const MODEL_NAMES = { equal: 'Even Split', proportional: 'Income-Based', hybrid: 'Balanced' };
 const MODEL_DESC = { equal: 'Same dollar amount', proportional: 'Same % of income', hybrid: '50/50 blend' };
+const MODEL_TOOLTIPS = {
+  equal: 'Total monthly cost divided equally among all applicants. Everyone pays the same dollar amount regardless of income.',
+  proportional: 'Each person pays in proportion to their share of the group\u2019s total income. Higher earners pay more in dollars, but everyone pays the same percentage of their income toward housing.',
+  hybrid: 'Half the total cost is split equally, half is split by income proportion. Combines shared baseline responsibility with income-sensitive fairness.',
+};
+
+function ModelsHelpTooltip() {
+  const [show, setShow] = useState(false);
+  const ref = useState(null);
+  const [pos, setPos] = useState({ top: 0, left: 0 });
+  const iconRef = useCallback((node) => {
+    ref[1] = node;
+  }, []);
+
+  function updatePos() {
+    const el = ref[1];
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    setPos({ top: rect.bottom + 8, left: Math.min(rect.right, window.innerWidth - 290) });
+  }
+
+  return (
+    <span
+      ref={iconRef}
+      style={{ display: 'inline-flex', alignItems: 'center' }}
+      onMouseEnter={() => { updatePos(); setShow(true); }}
+      onMouseLeave={() => setShow(false)}
+      onClick={(e) => { e.stopPropagation(); updatePos(); setShow((v) => !v); }}
+    >
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2.5" strokeLinecap="round" style={{ cursor: 'pointer', opacity: 0.45, flexShrink: 0 }}>
+        <circle cx="12" cy="12" r="10" />
+        <path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3" />
+        <line x1="12" y1="17" x2="12.01" y2="17" />
+      </svg>
+      {show && (
+        <div style={{
+          position: 'fixed', top: pos.top, left: pos.left, transform: 'translateX(-100%)',
+          width: 280, padding: '10px 12px', borderRadius: 10, fontSize: 11, lineHeight: 1.55, fontWeight: 400,
+          background: 'rgba(24, 24, 27, 0.92)', color: '#f4f4f5', backdropFilter: 'blur(8px)',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.25)', zIndex: 9999,
+          display: 'flex', flexDirection: 'column', gap: 8,
+        }}>
+          {MODEL_KEYS.map((k) => (
+            <div key={k}>
+              <span style={{ fontWeight: 700, color: '#93c5fd' }}>{MODEL_NAMES[k]}</span>
+              <span style={{ color: '#a1a1aa' }}> — {MODEL_TOOLTIPS[k]}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </span>
+  );
+}
 
 const fmt = (n) => (n < 0 ? '-' : '') + '$' + Math.abs(Math.round(n)).toLocaleString();
 const pctFmt = (n) => (n * 100).toFixed(1) + '%';
@@ -217,6 +270,7 @@ export default function ContributionsTab({ projectId, members, estimatedMonthlyC
               onClick={() => setActiveModel(key)}
             >{MODEL_NAMES[key]}</button>
           ))}
+          <ModelsHelpTooltip />
         </div>
       </div>
 

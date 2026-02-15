@@ -3981,3 +3981,13 @@
     min-width: 33%;
   }
 }
+
+@media (min-width: 1600px) {
+  .main-content { max-width: 1520px; }
+  .topbar-inner { max-width: 1560px; }
+}
+
+@media (min-width: 1920px) {
+  .main-content { max-width: 1680px; }
+  .topbar-inner { max-width: 1720px; }
+}
