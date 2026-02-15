@@ -463,7 +463,7 @@ function BuildingCard({ building, expanded, onToggle, onNavigate, onCreateDeal }
     <div className="building-card-multi">
       <div className="building-header" onClick={onToggle}>
         <span className="building-type-badge">{building.type}</span>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0, width: 200, flexShrink: 0 }}>
           <span className="building-row-address">{displayName}</span>
           <span className="building-row-sub">{locationSub}</span>
         </div>
@@ -474,7 +474,7 @@ function BuildingCard({ building, expanded, onToggle, onNavigate, onCreateDeal }
           <path d="M9 18l6-6-6-6" />
         </svg>
         {!expanded && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 3, flexShrink: 0, marginLeft: 4 }}>
             {uniqueStages.map((s) => {
               const count = dealStages.filter((ds) => ds === s).length;
               return (

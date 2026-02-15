@@ -21,22 +21,16 @@ const STATUS_CONFIG = {
   failed:    { label: 'Failed',   color: '#dc2626', bg: 'rgba(220, 38, 38, 0.08)' },
 };
 
-const FILTER_STATUSES = [
-  { key: 'generated', label: 'Not Sent' },
-  { key: 'released',  label: 'Sent' },
-  { key: 'viewed',    label: 'Viewed' },
-];
-
 const POLL_INTERVAL_MS = 3000;
 
 function useFlash(duration = 3000) {
   const [text, setText] = useState(null);
   const timer = useRef(null);
-  function flash(msg, after) {
+  const flash = useCallback((msg, after) => {
     if (timer.current) clearTimeout(timer.current);
     setText(msg);
     timer.current = setTimeout(() => { setText(after ?? null); timer.current = null; }, duration);
-  }
+  }, [duration]);
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
   return [text, flash];
 }
@@ -109,7 +103,6 @@ export default function ReportTab({ projectId }) {
   const [applicantReports, setApplicantReports] = useState([]);
   const [previewMemberId, setPreviewMemberId] = useState(null);
   const [reportSearch, setReportSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
   const pollRef = useRef(null);
 
   const [regenFlash, flashRegen] = useFlash();
@@ -131,11 +124,11 @@ export default function ReportTab({ projectId }) {
         if (rep) {
           setReport(rep);
           if (appRep.applicantReports?.length) setApplicantReports(appRep.applicantReports);
-          if (rep.status !== 'generating') { stopPolling(); setGenerating(false); flashRegen('Done \u2713'); }
+          if (rep.status !== 'generating') { stopPolling(); setGenerating(false); flashRegen(rep.status === 'failed' ? 'Failed' : 'Done \u2713'); }
         }
       } catch { /* ignore */ }
     }, POLL_INTERVAL_MS);
-  }, [projectId, stopPolling]);
+  }, [projectId, stopPolling, flashRegen]);
 
   useEffect(() => () => stopPolling(), [stopPolling]);
 
@@ -147,9 +140,8 @@ export default function ReportTab({ projectId }) {
       if (rep) {
         setReport(rep);
         if (rep.status === 'generating') { setGenerating(true); startPolling(); }
-        if (rep.selectedModelName) {
-          const key = Object.entries(MODEL_LABELS).find(([, v]) => v === rep.selectedModelName)?.[0];
-          if (key) setSelectedModel(key);
+        if (rep.selectedModelName && MODEL_LABELS[rep.selectedModelName]) {
+          setSelectedModel(rep.selectedModelName);
         }
       }
       setApplicantReports(appRep.applicantReports || []);
@@ -201,43 +193,29 @@ export default function ReportTab({ projectId }) {
   const generated = report?.status === 'complete';
   const hasUnsent = applicantReports.some((r) => r.status === 'generated');
 
-  const usedModel = report?.selectedModelName;
-  const selectedLabel = MODEL_LABELS[selectedModel] || null;
-  const modelMismatch = generated && selectedLabel && usedModel && selectedLabel !== usedModel;
+  const usedModelKey = report?.selectedModelName;
+  const usedModelLabel = MODEL_LABELS[usedModelKey] || null;
+  const modelMismatch = generated && selectedModel && usedModelKey && selectedModel !== usedModelKey;
+
+  const regenLabel = generating ? 'Regenerating...' : regenFlash || (generated ? 'Regenerate' : 'Generate Reports');
 
   const rq = reportSearch.toLowerCase().trim();
   const filteredReports = applicantReports.filter((r) => {
-    const matchesText = !rq || (r.memberName || '').toLowerCase().includes(rq) || (r.employmentType || '').toLowerCase().includes(rq);
-    const matchesStatus = !statusFilter || r.status === statusFilter;
-    return matchesText && matchesStatus;
+    return !rq || (r.memberName || '').toLowerCase().includes(rq) || (r.employmentType || '').toLowerCase().includes(rq);
   });
-  const hasActiveFilter = rq || statusFilter;
-
-  const regenLabel = generating ? 'Regenerating...' : regenFlash || (generated ? 'Regenerate' : 'Generate Reports');
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       {error && <div className="form-error">{error}</div>}
 
-      {/* Search bar + filter pills — standalone, same as People tab */}
       {applicantReports.length > 1 && (
         <div className="search-filter-row">
           <div className="search-bar">
             <svg className="search-bar-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
             <input type="text" placeholder="Search by name..." value={reportSearch} onChange={(e) => setReportSearch(e.target.value)} />
-            {hasActiveFilter && <span className="search-bar-count">{filteredReports.length} of {applicantReports.length}</span>}
-            {(rq || statusFilter) && <button className="search-bar-clear" onClick={() => { setReportSearch(''); setStatusFilter(''); }}>&times;</button>}
+            {rq && <span className="search-bar-count">{filteredReports.length} of {applicantReports.length}</span>}
+            {rq && <button className="search-bar-clear" onClick={() => setReportSearch('')}>&times;</button>}
           </div>
-          {FILTER_STATUSES.map(({ key, label }) => {
-            const count = applicantReports.filter((ar) => ar.status === key).length;
-            if (count === 0) return null;
-            return (
-              <button key={key} className={`filter-pill ${statusFilter === key ? 'filter-pill-active' : ''}`} onClick={() => setStatusFilter(statusFilter === key ? '' : key)}>
-                {label}
-                <span style={{ opacity: 0.5 }}>{count}</span>
-              </button>
-            );
-          })}
         </div>
       )}
 
@@ -252,12 +230,12 @@ export default function ReportTab({ projectId }) {
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
               </select>
-              <button className="btn btn-primary btn-sm" onClick={handleGenerate} disabled={generating} style={{ minWidth: 110 }}>
+              <button className="btn btn-primary btn-sm" onClick={handleGenerate} disabled={generating} style={{ minWidth: 128 }}>
                 {generating && <span className="spinner sm inline" />}
                 {regenLabel}
               </button>
               {hasUnsent && (
-                <button className="btn btn-secondary btn-sm" onClick={handleSendAll} disabled={sendingAll} style={{ minWidth: 82 }}>
+                <button className="btn btn-secondary btn-sm" onClick={handleSendAll} disabled={sendingAll}>
                   {sendingAll ? 'Sending...' : sendAllFlash || 'Send All'}
                 </button>
               )}
@@ -266,22 +244,22 @@ export default function ReportTab({ projectId }) {
               <div className="report-status-line">
                 <span>
                   {applicantReports.length} report{applicantReports.length !== 1 ? 's' : ''} generated
-                  {usedModel ? ` using ${usedModel}` : ''}
+                  {usedModelLabel ? ` using ${usedModelLabel}` : ''}
                   {' \u2014 '}
                   {new Date(report.generatedAt).toLocaleString()}
                 </span>
                 {modelMismatch && (
-                  <span className="report-model-mismatch">Regenerate to use {selectedLabel}</span>
+                  <span className="report-model-mismatch">Regenerate to use {MODEL_LABELS[selectedModel]}</span>
                 )}
               </div>
             )}
           </div>
 
           {/* Rows */}
-          {hasActiveFilter && filteredReports.length === 0 ? (
+          {rq && filteredReports.length === 0 ? (
             <div className="search-empty-state" style={{ margin: '16px 0' }}>
               <span>&#128269;</span>
-              <span>No results for &ldquo;{reportSearch || STATUS_CONFIG[statusFilter]?.label}&rdquo;</span>
+              <span>No results for &ldquo;{reportSearch}&rdquo;</span>
             </div>
           ) : (
             filteredReports.map((r, i) => (
@@ -293,12 +271,12 @@ export default function ReportTab({ projectId }) {
         <div className="breakdown-card" style={{ padding: 0 }}>
           <div className="report-card-header" style={{ borderBottom: 'none' }}>
             <div className="report-card-header-row">
-              <select className="report-model-dropdown" value={selectedModel} onChange={(e) => setSelectedModel(e.target.value)}>
+              <select className="report-model-dropdown" value={selectedModel} onChange={(e) => setSelectedModel(e.target.value)} >
                 {MODEL_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
               </select>
-              <button className="btn btn-primary btn-sm" onClick={handleGenerate} disabled={generating} style={{ minWidth: 140 }}>
+              <button className="btn btn-primary btn-sm" onClick={handleGenerate} disabled={generating} style={{ minWidth: 128 }}>
                 {generating && <span className="spinner sm inline" />}
                 {regenLabel}
               </button>

@@ -1862,11 +1862,9 @@
 
 .report-card-header {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-  padding: 12px 16px;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 16px;
   border-bottom: 2px solid #e2e8f0;
 }
 
@@ -1874,21 +1872,21 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  flex-wrap: wrap;
 }
 
 .report-model-dropdown {
-  padding: 6px 28px 6px 10px;
+  padding: 6px 26px 6px 10px;
   border: 1px solid rgba(0, 0, 0, 0.1);
   border-radius: 8px;
   font-family: 'Outfit', sans-serif;
   font-size: 12px;
   font-weight: 500;
-  color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.5);
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.4);
   cursor: pointer;
   appearance: none;
   -webkit-appearance: none;
+  width: auto;
   background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2394a3b8' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 8px center;
@@ -3482,7 +3480,7 @@
   letter-spacing: 0.04em;
   color: var(--text-muted);
   white-space: nowrap;
-  width: 64px;
+  width: 76px;
   flex-shrink: 0;
   text-align: left;
 }
@@ -3793,6 +3791,7 @@
   background: transparent;
   font-family: 'Outfit', sans-serif;
   font-size: 13px;
+  line-height: 1.35;
   color: var(--text-primary);
   outline: none;
   min-width: 0;
@@ -3849,18 +3848,19 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 6px 10px;
-  border-radius: 8px;
+  padding: 7px 12px;
+  border-radius: 10px;
   border: var(--subglass-border);
   background: var(--subglass-bg);
   font-family: 'Outfit', sans-serif;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.12s;
   white-space: nowrap;
   user-select: none;
+  line-height: 1.35;
 }
 
 .filter-pill:hover {
@@ -4001,7 +4001,7 @@
   }
 
   .filter-pill {
-    padding: 5px 8px;
+    padding: 6px 10px;
     font-size: 11px;
   }
 
