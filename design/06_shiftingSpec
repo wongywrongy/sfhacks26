@@ -1,0 +1,300 @@
+# CommonGround — Spec Addendum: Applicant Financial Literacy Report
+
+## Overview
+
+When the manager generates the financial summary for a deal, the system simultaneously generates individualized financial literacy reports for each applicant. Each report contains only that applicant's own data — their credit profile, payment trajectory, tradeline composition, background summary, identity verification, their personal share under the selected cost split model, and AI-generated educational narrative explaining what it all means in accessible language.
+
+The manager controls distribution. Reports are generated and stored on the backend. The manager can review each person's report before releasing it. Once released, the applicant can access their report through a personalized link — no login, no account creation, consistent with the existing applicant experience.
+
+This transforms CommonGround from a manager-only assessment tool into a two-sided platform where applicants gain financial literacy as a direct benefit of participating in the screening process.
+
+---
+
+## Why This Matters
+
+Most people have never seen a structured breakdown of their credit composition. They know their score — maybe — but don't understand what revolving utilization means, why their payment trajectory matters, or how their debt profile affects their housing affordability. Credit reports are dense, jargon-heavy documents designed for lenders, not consumers.
+
+CommonGround already processes this data into structured, readable formats for the manager. The applicant report repackages the same processed data with educational context, delivered at the exact moment the person is making a major financial decision. It's financial literacy that's personal, timely, and actionable.
+
+---
+
+## Data Isolation — Critical Requirement
+
+Each applicant report is generated from a strictly scoped data set. The backend enforces this at the generation layer — the function that builds the report input for Gemini receives only one person's record, never the full deal.
+
+**Included in an applicant's report:**
+
+- Their own credit score, payment trajectory, and tradeline composition
+- Their own criminal/eviction summary (disposition and recency only — no raw offense descriptions that could feel punitive)
+- Their own identity verification status
+- Their own self-reported income and employment type
+- Their personal DTI ratio
+- The property address and total monthly housing cost (shared context — the applicant already knows this)
+- Their specific payment amount under the selected split model
+- Their personal breathing room after housing payment and existing debt
+- Their payment as a percentage of income
+- AI-generated educational narrative specific to their data
+
+**Never included in an applicant's report:**
+
+- Any other applicant's name, income, credit score, debt, or any personal data
+- Group-level metrics (combined income, group DTI, dependency analysis)
+- The manager's notes or review status for anyone
+- Other applicants' split amounts or breathing room
+- Any ranking or comparison language ("you have the lowest score," "you contribute less")
+- The manager's AI assessments (these are business-facing, not applicant-facing)
+- Raw CRS API responses
+
+**The report must read as if this person is the only applicant.** No references to "the group's finances," "compared to other applicants," or any language that implies awareness of others. The split amount is presented as "your share of the monthly cost" without explaining how it was calculated relative to others.
+
+---
+
+## Data Model
+
+### Applicant Report (stored on Person record)
+
+```
+applicantReport: {
+  reportId: String,              // unique identifier for the report
+  accessToken: String,           // unique token for the report access URL
+  status: String,                // "generated", "released", "viewed"
+  generatedAt: Date,
+  releasedAt: Date,              // null until manager releases
+  viewedAt: Date,                // null until applicant opens the link
+  selectedModel: String,         // which split model was used
+  personalSplitAmount: Number,   // their monthly payment under that model
+  personalSplitPercent: Number,  // payment as percentage of their income
+  personalBreathingRoom: Number, // income - existing debt - housing payment
+
+  sections: {
+    creditProfile: {
+      score: Number,
+      scoreCategory: String,          // "excellent", "good", "fair", "poor" — educational framing
+      totalDebt: Number,
+      monthlyObligations: Number,
+      personalDTI: Number,
+      dtiCategory: String,            // "healthy", "manageable", "stretched", "overextended"
+    },
+    paymentTrajectory: {
+      trend: String,
+      recentLateCount: Number,
+      olderLateCount: Number,
+      windowMonths: Number,
+      confidence: String
+    },
+    tradelineComposition: {
+      categories: Array,              // same structure as the person's computed composition
+      revolvingUtilization: Number,
+      utilizationCategory: String,    // "low", "moderate", "high" — educational framing
+      dominantType: String
+    },
+    backgroundSummary: {
+      criminalStatus: String,         // "clear", "records_found"
+      criminalRecordCount: Number,    // count only, no descriptions in the report
+      criminalOverallSeverity: String,
+      evictionStatus: String,         // "clear", "filings_found"
+      evictionFilingCount: Number,
+      evictionOverallSeverity: String,
+      identityVerified: Boolean
+    },
+    housingAffordability: {
+      monthlyIncome: Number,
+      existingMonthlyDebt: Number,
+      proposedHousingPayment: Number,
+      totalMonthlyObligations: Number,  // existing debt + housing
+      projectedDTI: Number,             // (existing debt + housing) / income
+      projectedDTICategory: String,     // "healthy", "manageable", "stretched", "overextended"
+      breathingRoom: Number,
+      breathingRoomCategory: String     // "comfortable", "tight", "squeezed"
+    }
+  },
+
+  aiNarrative: {
+    overview: String,             // 2-3 sentences: your financial snapshot in plain language
+    creditExplainer: String,      // 2-3 sentences: what your credit profile means
+    trajectoryExplainer: String,  // 2-3 sentences: what your payment history trend means
+    compositionExplainer: String, // 2-3 sentences: what your debt breakdown means
+    affordabilityExplainer: String, // 2-3 sentences: what this housing cost means for you
+    actionItems: String           // 2-3 sentences: concrete next steps to improve financial position
+  },
+  
+  aiGeneratedAt: Date
+}
+```
+
+### DTI Category Thresholds (applicant-facing, educational framing)
+
+| DTI Range | Category | Applicant-Facing Label |
+|-----------|----------|----------------------|
+| ≤ 28% | Healthy | "Your debt level is well within healthy limits." |
+| 29–36% | Manageable | "Your debt level is manageable but worth monitoring." |
+| 37–43% | Stretched | "Your debt level is getting stretched — this housing cost will be a significant commitment." |
+| > 43% | Overextended | "Adding this housing cost would push your obligations beyond standard affordability thresholds." |
+
+### Revolving Utilization Category Thresholds
+
+| Utilization | Category | Applicant-Facing Label |
+|-------------|----------|----------------------|
+| ≤ 30% | Low | "Your credit card usage is low relative to your limits — this is favorable for your credit health." |
+| 31–50% | Moderate | "Your credit card usage is moderate — reducing balances could improve your credit position." |
+| > 50% | High | "Your credit card usage is high relative to your limits — this is one of the easiest factors to improve." |
+
+### Credit Score Category Thresholds (educational, not judgmental)
+
+| Score Range | Category | Applicant-Facing Label |
+|-------------|----------|----------------------|
+| ≥ 740 | Excellent | "Your credit score is in excellent range." |
+| 670–739 | Good | "Your credit score is in good range." |
+| 580–669 | Fair | "Your credit score is in the fair range — there are clear paths to improvement." |
+| < 580 | Poor | "Your credit score is below average — but credit scores are not permanent, and targeted actions can make a meaningful difference." |
+
+---
+
+## Gemini Integration — Applicant-Facing Prompt
+
+### System Prompt (replaces the sitewide manager-facing prompt for applicant reports)
+
+```
+You are a personal financial educator writing a report for someone who just applied for housing. Your tone is warm, clear, and empowering — never judgmental, never alarming. STRICT RULES: 1. Write exactly 2-3 sentences per section. 2. Use flowing prose only. Never use dashes, bullet points, numbered lists, or line breaks. 3. Explain financial concepts in plain language as if the reader has never seen a credit report before. 4. Never use the words: concerning, alarming, problematic, risky, poor, bad, weak, insufficient. Instead use: worth monitoring, an area for growth, room for improvement, an opportunity to strengthen. 5. Every sentence must reference a specific number from their data. 6. Always end each section with something constructive — either affirming what they're doing well or pointing to a concrete action they can take. 7. Never reference other applicants, group dynamics, or comparisons. Write as if this person is the only applicant. 8. Never reference the manager's assessment or review process. 9. Frame everything around what THEY can do and what THEY should understand about their own finances.
+```
+
+### Prompt Sections (each generates one aiNarrative field)
+
+**Overview prompt:**
+```
+Write a 2-3 sentence financial snapshot for [first name]. Credit score: [score] ([category]). Monthly income: $[income]. Total monthly debt: $[obligations]. Personal DTI: [dti]% ([dtiCategory]). Payment trajectory: [trend].
+```
+
+**Credit explainer prompt:**
+```
+Explain to [first name] what their credit score of [score] means in plain language. For context: scores range from 300-850. Lenders generally consider [thresholds]. Their score falls in the [category] range. Include one specific thing they can do to maintain or improve it.
+```
+
+**Trajectory explainer prompt:**
+```
+Explain to [first name] what their payment trajectory means. Trend: [trend]. Recent late payments ([last N months]): [count]. Older late payments ([prior N months]): [count]. Explain what this pattern means for their creditworthiness in plain language. If improving, affirm the progress. If stable, affirm consistency. If declining, frame as an opportunity to course-correct.
+```
+
+**Composition explainer prompt:**
+```
+Explain to [first name] what their debt composition looks like. Dominant debt type: [type]. Revolving utilization: [percent]% ([category]). Number of revolving accounts: [count]. Number of installment accounts: [count]. Explain in plain language what revolving utilization means and why it matters. Include one actionable takeaway.
+```
+
+**Affordability explainer prompt:**
+```
+Explain to [first name] what this housing cost means for their budget. Monthly income: $[income]. Existing monthly debt: $[existingDebt]. Proposed housing payment: $[splitAmount] (their share). Projected total obligations: $[total]. Projected DTI: [projectedDTI]% ([category]). Breathing room after all obligations: $[breathingRoom]/month. Explain in plain language what DTI means and what the standard 28/36 rule is. Frame the breathing room amount in practical terms.
+```
+
+**Action items prompt:**
+```
+Based on [first name]'s financial profile, write 2-3 sentences identifying the most impactful concrete actions they could take to strengthen their financial position. Credit score: [score]. Revolving utilization: [percent]%. Payment trajectory: [trend]. DTI: [dti]%. Focus on the 1-2 highest-leverage actions specific to their data — not generic advice. Every recommendation must connect to a specific number from their profile.
+```
+
+### Prompt Safety for Applicant Reports
+
+- First name only — no last name, no SSN, no address, no DOB in the prompt
+- No other applicant's data in the prompt — each report is generated from a single person's record
+- No group metrics, no dependency analysis, no comparative language
+- The system prompt explicitly prohibits negative characterization
+- Criminal/eviction records are NOT sent to Gemini for the applicant report — the report includes only the status ("clear" or "records found") and count, not descriptions. The applicant already knows their own history. The report doesn't editorialize on it.
+
+---
+
+## API Contracts
+
+**POST /api/deals/:dealId/reports** — Triggered when the manager clicks "Generate Summary." Generates the manager's financial summary (existing) AND individual applicant reports for all active people in the deal. Accepts the selected split model name. Manager-authenticated.
+
+This is a batch operation. The backend:
+1. Generates the existing manager financial summary (unchanged).
+2. For each active person in the deal, builds the scoped report data set and fires 6 Gemini calls (one per narrative section) concurrently.
+3. Stores each completed report on the person's record.
+4. Returns confirmation with the count of reports generated.
+
+**GET /api/deals/:dealId/reports** — Returns a list of all generated reports for the deal, showing person name, report status (generated/released/viewed), and generation timestamp. Manager-authenticated. Used by the manager to review before releasing.
+
+**GET /api/deals/:dealId/reports/:personId/preview** — Returns the full report content for the manager to review before releasing. Manager-authenticated.
+
+**PUT /api/deals/:dealId/reports/:personId/release** — Manager releases a specific person's report, making it accessible via the applicant's access link. Sets status to "released" and records the timestamp. Manager-authenticated.
+
+**PUT /api/deals/:dealId/reports/release-all** — Batch release all generated reports. Manager-authenticated.
+
+**GET /api/report/:accessToken** — Public endpoint (no auth). Returns the applicant's report content. Only works if the report status is "released." This is the URL shared with the applicant.
+
+---
+
+## Processing Flow
+
+### When the manager clicks "Generate Summary":
+
+1. Backend generates the manager's financial summary (existing flow, unchanged).
+2. Backend iterates through all active people in the deal (those with status "cleared" or "pending" — not "declined").
+3. For each person, the backend builds the report data object from ONLY that person's record plus deal-level shared context (address, monthly cost, their split amount).
+4. Backend fires 6 Gemini calls per person concurrently (overview, credit, trajectory, composition, affordability, action items), each using the applicant-facing system prompt.
+5. As calls return, results are assembled into the aiNarrative object.
+6. The complete report is stored on the person record with status "generated."
+7. If any Gemini call fails for a person, that narrative section is stored as null. The report is still generated with the data sections intact — the narrative sections are supplementary, not required.
+
+### When the manager reviews and releases:
+
+1. Manager opens the reports list, sees all generated reports.
+2. Manager can preview any report to verify content and data isolation.
+3. Manager releases individual reports or all at once.
+4. Released reports become accessible via public access tokens.
+
+### When the applicant views their report:
+
+1. Applicant receives a link from the manager (via email, text, or however the manager communicates — outside the product).
+2. Applicant opens the link, which hits the public GET endpoint.
+3. Backend verifies the access token and that the report status is "released."
+4. The report renders as a clean, single-page view — no navigation, no dashboard, no login. Just their financial profile with educational narrative.
+5. Backend records the viewedAt timestamp.
+
+---
+
+## Frontend — Applicant Report View
+
+The report renders as a single, self-contained page. No header navigation, no sidebar, no dashboard chrome. Clean, warm, approachable design — this is not the manager's glass-morphism dashboard. Different visual language for a different audience.
+
+**Report header:** "Your Financial Profile" with the property address and the applicant's first name. A subtitle: "This report was prepared as part of your housing application and is yours to keep."
+
+**Section 1 — Your Financial Snapshot:** Credit score (large, prominently displayed with category label and color), monthly income, total monthly debt, personal DTI with category label, payment trajectory trend indicator. The AI overview narrative sits below these numbers.
+
+**Section 2 — Your Credit Profile:** Credit score explainer (AI narrative), followed by the tradeline composition visualization (stacked bar showing debt types), revolving utilization with category label, and the composition explainer (AI narrative).
+
+**Section 3 — Your Payment History:** Payment trajectory trend with the recent vs. older late count comparison, window of analysis, and the trajectory explainer (AI narrative).
+
+**Section 4 — This Housing Cost & You:** Their proposed monthly payment, projected DTI after housing, breathing room amount with category label, and the affordability explainer (AI narrative). A simple visual: a bar showing income divided into three segments — existing debt, housing payment, and remaining breathing room.
+
+**Section 5 — Your Next Steps:** The action items narrative (AI-generated, specific to their data). Framed constructively — "Based on your profile, here's where you have the most leverage."
+
+**Section 6 — Background & Identity:** A brief section. If background is clear: "No criminal records or eviction filings were found. Your identity was verified." If records exist: "Your background check returned [count] record(s). For questions about these records, contact [manager contact or general guidance]." No severity labels, no offense descriptions, no editorial language in the applicant-facing report. The applicant knows their own history. The report acknowledges it exists without characterizing it.
+
+**Footer:** "This report is provided for your personal financial awareness. It is not a credit decision, loan approval, or legal document. For questions, contact your property manager."
+
+---
+
+## Manager Interface — Report Controls
+
+The report generation and release controls live on the existing Financial Summary section of the deal view. After the manager clicks "Generate Summary," a new subsection appears:
+
+**Applicant Reports panel:** Shows a card for each person with their name, report status badge (generated/released/viewed), and two actions: "Preview" (opens the report in a modal) and "Release" (makes it accessible to the applicant). A "Release All" button at the top handles batch release.
+
+The manager can preview every report before releasing to verify that no unintended data leakage occurred and that the AI narratives are appropriate.
+
+---
+
+## Hackathon Prioritization
+
+This feature sits at the intersection of "should build" and "nice to have." The report generation backend (data scoping, Gemini calls, storage) is moderate complexity. The applicant-facing report page is a separate frontend view but relatively simple — it's a single read-only page with no interactivity.
+
+**If time is limited:** Generate the reports and let the manager preview them. Skip the release/access-link flow. The demo can show the manager clicking "Generate Summary," then opening an applicant's report in preview mode. The judge sees the educational content and data isolation. The public access link is a polish feature.
+
+**For the demo:** The report is the emotional payoff. After showing the manager all the analytical depth — group financials, risk simulation, split models, safety tab — you flip to an applicant's report and show the warm, educational, empowering version of the same data. That contrast tells the story of the product: rigorous analysis for the decision-maker, financial literacy for the applicant. Both sides benefit.
+
+---
+
+## Track Alignment
+
+**Sustainability in Education:** This is the feature that makes the track argument credible. You're delivering personalized financial education — credit score context, DTI explanation, utilization education, actionable improvement steps — to people who are actively making a housing decision. It's education embedded in a real transaction, not a disconnected learning module.
+
+**CRS Track — Real-World Application:** The applicant report demonstrates that credit data can serve the applicant, not just the screener. This directly addresses CRS's judging criterion of "better access to credit" and "clearer insights." You're using their API to generate financial literacy, not just gatekeeping decisions.

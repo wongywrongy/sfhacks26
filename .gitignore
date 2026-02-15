@@ -1,0 +1,6 @@
+/.claude
+.mcp.json
+node_modules
+.env
+dist
+.vercel

@@ -1,0 +1,338 @@
+# CommonGround — Technical Specification
+
+## Architecture Overview
+
+The application is a three-tier system. A React frontend serves two interfaces — the property manager dashboard and the applicant form. A Node.js/Express backend handles all business logic, external API orchestration, and data processing. MongoDB Atlas stores all persistent data.
+
+The backend is the only layer that communicates with external services. The frontend never calls CRS or Gemini directly. All sensitive data (SSNs, credit reports) passes through the backend and is stored in MongoDB. The frontend receives only what it needs to render.
+
+---
+
+## External Service Integration
+
+### CRS API (Credit, Background, Identity)
+
+**Base URL:** https://api-sandbox.stitchcredit.com
+
+**Authentication:** POST to /api/users/login with username and password. Returns a JWT Bearer token. Token is included as an Authorization header on all subsequent requests. Token should be cached on the backend and refreshed when expired.
+
+**Per-applicant API calls (4 calls per person):**
+
+**1. Credit Report (Soft Pull)**
+
+Endpoint: POST /api/experian/credit-profile/credit-report/standard/exp-prequal-vantage4
+
+Request body requires: firstName, lastName, SSN (9 digits, no dashes), birthDate (YYYY-MM-DD format), and an addresses array with street, city, state, zip.
+
+Response returns: VantageScore 4 credit score, tradeline array (each tradeline has creditor name, account type, balance, monthly payment, payment status, open date), inquiry array, public records array, and summary statistics.
+
+We use Experian only for the hackathon. Production would pull from all three bureaus.
+
+**2. Criminal Background Check**
+
+Endpoint: POST /api/criminal/new-request
+
+Request body requires: subjectInfo with first, last, dob (MM-dd-yyyy format — different from credit), ssn (with dashes XXX-XX-XXXX — different from credit), and address fields (address, city, state, zip).
+
+Response returns: Array of candidate records with offense details, or empty if clean.
+
+**3. Eviction Check**
+
+Endpoint: POST /api/eviction/new-request
+
+Request body requires: Same format as criminal — subjectInfo with first, last, dob (MM-dd-yyyy), ssn (XXX-XX-XXXX), and address fields.
+
+Response returns: Array of candidate records with eviction details, or empty if clean.
+
+**4. Identity Verification (FlexID)**
+
+Endpoint: POST /api/flex-id/flex-id
+
+Request body requires: SSN or DOB (we have both from the form). Format follows the FlexID schema.
+
+Response returns: CVI score from 0 to 50. Higher is more confident.
+
+**Critical format differences to handle in the backend:**
+
+Credit endpoints expect dates as YYYY-MM-DD and SSN without dashes. Criminal and eviction endpoints expect dates as MM-dd-yyyy and SSN with dashes. The backend must transform the applicant's single set of form data into the correct format for each endpoint. Sandbox test SSNs all start with 666.
+
+**Error handling:** Any CRS call can fail. The backend should catch failures per-call and mark that specific check as "failed" on the person's record rather than failing the entire application. The dashboard should show which checks succeeded and which need retry.
+
+### Google Gemini API
+
+**Authentication:** API key passed as a header. Free credits provided for the hackathon.
+
+**Usage pattern:** The backend sends structured prompts to Gemini containing processed financial data (never raw PII like SSNs). Gemini returns natural language text that the backend stores in MongoDB. All Gemini calls are automatic — triggered by data events, not user actions.
+
+**Gemini system prompt (included in ALL API calls):**
+
+```
+You are a housing financial analyst providing factual assessments for a property manager. STRICT RULES: 1. Write exactly 2-3 sentences. 2. Use flowing prose only. Never use dashes, bullet points, numbered lists, or line breaks. 3. Never infer motivations, character traits, or future behavior. 4. Never speculate about WHY a data point exists. Only state THAT it exists and WHAT it means. 5. Connect data points to standard industry thresholds or group-level consequences. 6. Every sentence must reference a specific number, percentage, or person's name. 7. Do not use: suggest, imply, indicate, likely, probably, may, might, could, potentially, appears to, seems to. GOOD PATTERN: [Data point] + [Industry threshold or group consequence] + [What manager should know/do]. BAD PATTERN: [Data point] + [Speculation about person] + [Vague recommendation].
+```
+
+**Four prompt contexts:**
+
+**Individual applicant assessment** — Triggered automatically after all CRS checks complete for a person. Input: credit score, debt summary, payment history summary, employment type, income, and the group's property context. Output: a structured response with (1) a single-sentence summary for the table row view, and (2) a 2-3 sentence full assessment for the overlay panel. Stored on the person's record.
+
+**Group assessment** — Triggered automatically when group composition changes (new person's data completes, or a review status changes). Only fires if at least 2 people have completed data. Input: all applicant financial summaries, group aggregate metrics, dependency analysis results. Output: a structured response with sections — overview (2-3 sentences for the People tab snapshot), affordability analysis (2-3 sentences for the Financials tab DTI section), income diversity analysis (2-3 sentences for the Financials tab income section), dependency analysis (2-3 sentences for the Financials tab risk section). Stored on the deal record, overwriting the previous assessment.
+
+**Split model analysis** — Triggered automatically alongside the group assessment (same trigger). Input: the three model outputs with per-person breakdowns (plus custom if it exists). Output: 2-3 sentence contextual comparison explaining tradeoffs for this specific group. Stored on the deal record.
+
+**Homepage activity insight** — Triggered when the manager loads the Properties page. Input: a list of recent events per deal with timestamps and pending actions — NOT financial data. Output: 2-3 sentence chronological operational briefing covering what changed recently, what needs attention, and what is progressing. Uses a different system prompt focused on operational awareness rather than financial analysis. Stored on the org record with a TTL.
+
+**One user-triggered prompt context:**
+
+**Financial summary compilation** — Triggered when the manager clicks "Generate Summary." The backend gathers already-generated insights and sends them to Gemini with instructions to write a brief introduction, connect them with transitions, and format the combined content in professional language. Gemini is stitching and polishing, not creating new analysis. Stored on the deal record.
+
+**Prompt safety:** Never include SSNs, full names, or raw addresses in Gemini prompts. Use first names only. Include only processed financial summaries, not raw CRS responses.
+
+**Error handling:** Wrap all Gemini calls in try/catch. If a call fails, store null for that assessment field and move on. Never block the data pipeline on AI. The frontend shows financial data without the narrative if AI is unavailable.
+
+### MongoDB Atlas
+
+**Authentication:** Connection string with credentials stored in environment variables.
+
+**Database name:** commonground
+
+**Collections:** orgs, properties, deals
+
+---
+
+## Data Models
+
+### Organization
+
+Represents a property manager or management company using the platform.
+
+Fields: org ID (auto-generated), org name, login credentials (hashed password), contact email, date created.
+
+One org has many properties and many deals.
+
+### Property
+
+Represents a physical building managed by the org.
+
+Fields: property ID (auto-generated), parent org ID, address (street, city, state, zip), property type (apartment, condo, house, flat), units array (each unit has: unit name, bedroom count, monthly cost, linked deal ID or null), date created.
+
+Single-unit properties (houses, standalone flats) have a units array with one entry.
+
+### Deal
+
+Represents a set of applicants for a specific property or unit. A deal may be linked to a property/unit or may exist standalone (unlinked).
+
+Fields: deal ID (auto-generated), parent org ID, linked property ID (nullable), linked unit name (nullable), deal name, property address (denormalized for display), estimated monthly housing cost, target property price (low and high range — optional), expected applicant count, invite link token (unique string for the shareable URL), deal stage (one of: screening, review, negotiating, approved), date created, date last updated.
+
+**AI assessments (auto-generated, stored on the deal):**
+
+aiGroupAssessment: object containing overview (string), affordability (string), incomeDiversity (string), dependencies (string), generatedAt (timestamp). Null until first generation. Overwritten on each regeneration.
+
+aiModelAnalysis: string containing the split model comparison. Null until first generation. Overwritten on each regeneration.
+
+aiSummary: object containing compiledNarrative (string), selectedModel (string), includedPersonIds (array), generatedAt (timestamp). Null until explicitly generated.
+
+### Person
+
+Represents a prospective applicant within a deal.
+
+Fields: person ID (auto-generated), parent deal ID, date submitted.
+
+**Form data:** first name, last name, date of birth, SSN (encrypted at rest), street address, city, state, zip, self-reported monthly income, employment type.
+
+**CRS results:**
+
+Credit: score, total open tradelines count, total debt balance, estimated monthly debt obligations, on-time payment percentage, delinquency count, public records count, full tradeline array (creditor, type, balance, monthly payment, status), processing status (pending, complete, failed).
+
+Criminal: records array (offense details), processing status.
+
+Eviction: records array (eviction details), processing status.
+
+Identity: CVI score, verification status (verified if score > 30, uncertain if 15-30, failed if below 15), processing status.
+
+**Computed individual metrics:** personal DTI (monthly obligations divided by monthly income), monthly disposable income after debt.
+
+**AI assessment:** aiSummary (single sentence for table row), aiFull (2-3 sentences for overlay panel), generatedAt (timestamp). Null until generation. Overwritten on each regeneration.
+
+**Manager-assigned fields:** review status (pending, cleared, flagged, declined), manager notes (free text).
+
+### Group Metrics (computed, stored on the Deal)
+
+Fields: combined monthly income, combined monthly debt obligations, group DTI ratio, estimated borrowing power (max monthly payment and approximate loan amount), income diversity score (ratio of unique employment types to total people).
+
+**Dependency matrix:** For each person — the group DTI recalculated without that person, and a boolean indicating whether the remaining group stays below the 43% viability threshold. Extended to support multi-select: recalculate with any combination of excluded people.
+
+### Split Models (computed, stored on the Deal)
+
+Three preset model arrays plus an optional custom model, each containing one entry per active person.
+
+Each entry contains: person ID, person display name, monthly payment amount, payment as percentage of their income, monthly breathing room (income minus existing debt minus housing payment).
+
+Model definitions:
+
+Equal: total monthly cost divided by person count.
+
+Proportional: each person's income divided by combined income, multiplied by total monthly cost.
+
+Balanced (hybrid): 50% of total cost split equally, remaining 50% split by income proportion.
+
+Custom: manager manually sets amounts. System validates sum equals total cost, flags any person above 30% of income toward housing.
+
+---
+
+## API Contracts (Backend Endpoints)
+
+### Authentication
+
+**POST /api/auth/login** — Manager logs in. Accepts email and password. Returns a session token.
+
+### Properties
+
+**GET /api/properties** — Returns all properties for the authenticated org. Used by the Properties homepage.
+
+**POST /api/properties** — Creates a new property. Accepts address, property type, and units array.
+
+**GET /api/properties/:propertyId** — Returns property detail including units and linked deal IDs.
+
+### Deals
+
+**GET /api/deals** — Returns all deals for the authenticated org. Includes both property-linked and standalone deals. Used by the Properties homepage to aggregate stats.
+
+**POST /api/deals** — Creates a new deal. Accepts deal name, address, monthly cost, expected applicants, optional property ID and unit name for linking. Returns the deal with its generated invite link.
+
+**GET /api/deals/:dealId** — Returns full deal detail including people list with statuses, group metrics, and split models.
+
+**PUT /api/deals/:dealId/stage** — Advances or sets the deal stage (screening, review, negotiating, approved). Manager-authenticated.
+
+### Applicant Intake
+
+**POST /api/intake/:inviteToken** — Public endpoint (no auth required). This is what the applicant form submits to. Accepts all form fields. Creates a person record, then triggers CRS API calls asynchronously. Returns a simple success confirmation.
+
+### People
+
+**GET /api/deals/:dealId/people** — Returns all people for a deal with processing statuses. Manager-authenticated.
+
+**GET /api/deals/:dealId/people/:personId** — Returns full person detail including all CRS results and AI assessment. Manager-authenticated.
+
+**PUT /api/deals/:dealId/people/:personId/status** — Updates a person's review status (cleared, flagged, declined) and manager notes. After updating, triggers deal reassessment if warranted. Manager-authenticated.
+
+### Financials
+
+**GET /api/deals/:dealId/financials** — Returns group metrics, dependency analysis, and stored AI group assessment. Recomputes metrics if stale. Manager-authenticated.
+
+**GET /api/deals/:dealId/financials?exclude=personId1,personId2** — Returns group metrics recalculated without specified people. Powers the multi-select risk analysis simulator. Manager-authenticated.
+
+### Split Models
+
+**GET /api/deals/:dealId/splits** — Returns all split models (three presets plus custom if exists) and stored AI model analysis. Manager-authenticated.
+
+**GET /api/deals/:dealId/splits?exclude=personId1,personId2** — Returns all models recalculated with specified people excluded. Powers the person toggle. Manager-authenticated.
+
+**PUT /api/deals/:dealId/splits/custom** — Creates or updates the custom split. Accepts an array of person ID and payment amount pairs. Backend validates that amounts sum to total monthly cost and flags affordability violations. Manager-authenticated.
+
+### Homepage Insight
+
+**GET /api/insights/activity** — Returns the cached homepage activity insight. If stale or missing, triggers a Gemini call with recent event data across all deals. Manager-authenticated.
+
+### Financial Summary
+
+**POST /api/deals/:dealId/summary** — The ONLY user-triggered AI action. Triggers Gemini to compile the financial summary. Accepts the selected split model name. Stores the complete summary on the deal record. Manager-authenticated.
+
+**GET /api/deals/:dealId/summary** — Returns the generated financial summary. Manager-authenticated.
+
+---
+
+## Processing Flow
+
+### When an applicant submits the form:
+
+1. Backend validates all required fields.
+2. Backend creates a person record in MongoDB with status "pending" on all CRS checks.
+3. Backend fires all four CRS calls (credit, criminal, eviction, identity) concurrently — transforming the form data into the correct format for each endpoint.
+4. As each call returns, the backend updates the person record with results and marks that check as "complete" or "failed."
+5. Once the credit pull completes, the backend computes individual metrics (personal DTI, disposable income).
+6. Once all checks are complete, the backend automatically fires the Gemini individual assessment with the sitewide system prompt.
+7. Gemini response (summary + full) is stored on the person record. If Gemini fails, null is stored and the pipeline continues.
+8. The backend then checks if the deal should be reassessed — if at least 2 people now have completed data, or if the existing group assessment is stale, the backend automatically recomputes group metrics and fires the Gemini group assessment + model analysis.
+9. Deal-level AI results are stored on the deal record, overwriting any previous versions.
+
+### When the manager changes a person's review status:
+
+1. Backend updates the person's status.
+2. Backend automatically checks if the deal should be reassessed. If the status change affects which people are active, recompute group metrics and fire Gemini group assessment + model analysis.
+3. Updated results stored on the deal record.
+
+### When the manager advances a deal's stage:
+
+1. Backend updates the deal's stage field.
+2. No automatic reassessment — stage changes are informational. The stage is displayed on the homepage and within the deal view.
+
+### When the manager views the Properties homepage:
+
+1. Backend gathers all properties and all deals (linked and unlinked) for the org.
+2. Backend computes aggregate stats: total revenue, total applicants, average DTI, vacant units, deals needing attention.
+3. Backend checks if the activity insight is stale. If so, gathers recent events across all deals and fires Gemini with the homepage-specific prompt (operational briefing, not financial analysis).
+4. Frontend renders the building tree with stats, stage pills, and the activity insight.
+
+### When the manager views deal financials:
+
+1. Backend returns the stored group metrics and AI assessments. No new computation unless data is stale.
+2. Frontend renders metrics with AI annotations placed inline next to each data section.
+
+### When the manager uses the risk analysis simulator:
+
+1. Frontend sends request with one or more excluded person IDs.
+2. Backend recalculates group DTI, borrowing power, and viability without those people.
+3. Frontend updates the risk analysis display. Gemini is NOT re-called for simulations.
+
+### When the manager opens the Breakdown tab:
+
+1. Backend returns the stored split models and AI model analysis.
+2. Frontend renders all models side by side with Gemini's narrative.
+
+### When the manager toggles a person out of splits:
+
+1. Frontend sends request with the excluded person ID(s).
+2. Backend recalculates all three preset models excluding those people.
+3. Frontend updates in real time. Gemini is NOT re-called for toggles.
+
+### When the manager generates the financial summary:
+
+1. Backend gathers all existing AI insights from the deal.
+2. Backend sends collected insights and data to Gemini with instructions to compile with transitions.
+3. Compiled summary is stored on the deal.
+4. Frontend presents the summary for review and download.
+
+### Deal Reassessment Logic
+
+A function `shouldReassessDeal(dealId)` returns true if:
+- A new person's data just completed processing
+- A person's review status just changed
+- The stored group assessment is null
+- The stored group assessment's generatedAt is older than the most recent person data change
+
+This function is called after every person data update and every status change. If it returns true, the backend recomputes group metrics, dependency analysis, and split models, then fires Gemini group assessment + model analysis in the background (non-blocking).
+
+The manager never waits for Gemini. CRS results are returned and displayed immediately. AI insights appear when ready.
+
+---
+
+## Security Considerations
+
+**SSN handling:** SSNs are collected on the form over HTTPS, transmitted to the backend, used immediately for CRS API calls, and stored encrypted in MongoDB. The frontend never stores SSNs. The dashboard never displays full SSNs — only last 4 digits for identification.
+
+**Gemini prompt safety:** No SSNs, full addresses, or other PII in Gemini prompts. People referenced by first name only. The sitewide system prompt enforces factual-only output — no speculation, no character inferences.
+
+**Authentication:** Manager users authenticate with email/password. Session tokens expire. Invite links are public but contain unique tokens that cannot be guessed.
+
+**For the hackathon:** Full encryption and production-grade security are not expected. But the architecture should demonstrate awareness of these concerns. Use HTTPS, don't log SSNs, don't expose them in the frontend.
+
+---
+
+## Hackathon Prioritization
+
+**Must build (core demo):** Applicant form, CRS credit pull integration, Properties homepage with building list and stage pills, People tab with three-layer row structure and overlay panel, Financials tab with DTI and multi-select risk analysis, Breakdown tab with all three models and person toggle, auto-generating Gemini integration for at least group assessment and model analysis.
+
+**Should build (strengthens demo):** CRS criminal and eviction integration, CRS FlexID integration, auto-generating Gemini individual person assessments with row summaries, homepage chronological activity insight, financial summary generation, deal stage management, property/unit linking.
+
+**Nice to have (if time allows):** Polished financial summary PDF export, real-time dashboard updates via polling, manager notes and status management per person, multi-unit building expand/collapse with stage summary dots.
+
+**Skip entirely:** Applicant portal, org account creation flow (hardcode one org for demo), real authentication system (basic middleware is fine), mobile responsiveness.

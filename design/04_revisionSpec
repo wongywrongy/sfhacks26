@@ -1,0 +1,228 @@
+# CommonGround — Revised Spec & Design Direction
+
+## Read This First
+
+This document overrides the previous functional spec, technical spec, and build prompts wherever they conflict. The core data flow and backend architecture are correct — what's changing is the **framing, language, and UI structure** so the product makes sense for real people, not just institutional co-op organizations.
+
+---
+
+## What This Product Actually Is
+
+CommonGround answers one question: **"Can this group of people afford this place together, and how should they split the cost?"**
+
+It works for any group pooling money to share housing:
+
+- Friends splitting an apartment
+- A family where multiple earners contribute to a mortgage
+- Coworkers going in on a house
+- Community members forming a housing cooperative
+- A property owner evaluating whether a group of tenants can collectively handle the rent
+
+The "organization" user might be a housing nonprofit, but it might also be a property manager, a landlord, a real estate agent, or just the one person in the friend group who's organizing everyone. The product should feel useful to all of them.
+
+---
+
+## What's Wrong With the Current UI
+
+The current dashboard (screenshot reference: "Sunset District Student Co-op" with Mei, Alex, Sam, Yuki in a flat card grid) has these problems:
+
+1. **It looks like one big co-op with people in it.** The mental model should be: here's a property, here are the people who want to live there together, can they afford it and how should they split it?
+
+2. **Members are a flat list with no story.** The cards show name, income, employment, and CRS status — but there's no sense of who these people are in relation to the property or each other. The org user needs to quickly understand the group dynamic.
+
+3. **The language is institutional.** Terms like "co-op formation project," "intake," "org status" — this sounds like a compliance tool. Real people don't talk like this.
+
+4. **Each project page tries to do everything.** Members, Analytics, Contributions, Report all live under one roof but they serve different purposes at different times in the process.
+
+---
+
+## Revised Information Architecture
+
+### Level 1: Groups Dashboard
+
+When the user logs in, they see all their **groups** (not "projects"). Each group card shows:
+
+- **Group name** (user-defined, e.g. "The Sunset Crew", "742 Evergreen Terrace", "Johnson Family Home")
+- **Property summary** — location, price range, monthly cost
+- **People count** — "4 of 5 people ready" (not "4/5 members completed intake")
+- **Group health indicator** — a simple color-coded status: green (looks good), yellow (some concerns), red (significant issues), gray (still gathering info)
+- **Last activity** date
+
+The user creates a new group by entering: a group name, the property location, the estimated price range, the estimated total monthly cost, and how many people will be in the group.
+
+The system generates a **share link** — not an "intake link." The user sends this to the people in the group.
+
+### Level 2: Group Detail Page
+
+When the user clicks into a group, they see a page centered on **this specific group of people and this specific property.** The top of the page shows the property context (name, location, price, monthly cost) and the share link.
+
+Below that, the primary view is the **People** tab — the list of everyone in the group. Other tabs are: **Financials** (was Analytics), **Split** (was Contributions), and **Report**.
+
+### Level 3: People Tab (was Members)
+
+Each person card shows:
+
+- Name (first name, last initial)
+- Their self-reported monthly income
+- Employment type
+- Status indicators for each screening check
+- A **readiness badge**: Ready (all checks passed, profile looks good), Concerns (flagged issues), Pending (still processing), Incomplete (form not submitted yet)
+
+Clicking a person opens their full profile in a large modal/panel.
+
+**Key change:** The card should immediately convey whether this person strengthens or weakens the group. The readiness badge does this at a glance. The current "Approved" badge is an org action, not an assessment — it should still exist but as a secondary action inside the profile, not the primary visual signal.
+
+### Level 4: Person Profile (was Member Profile)
+
+Everything from the current spec stays — credit data, background screening, identity verification, self-reported info, AI assessment. But the framing changes:
+
+- The AI assessment should answer: "What does this person bring to the group? What are the risks? How do they affect everyone else's financial picture?"
+- The org actions (approve, flag, ineligible) move to a clear action bar at the bottom, not mixed into the data display.
+- Notes are prominent — the org user will often need to record context like "spoke with them, they're paying off that debt by March."
+
+### Financials Tab (was Analytics)
+
+This is the group's collective financial picture. The key question it answers: **"Can this group afford this property?"**
+
+Shows:
+- Combined monthly income vs. monthly cost — the core ratio
+- Group debt-to-income ratio with clear healthy/warning/critical coloring
+- Estimated borrowing power (if buying, not renting)
+- Income diversity — how varied the income sources are
+- **Resilience matrix** — the most important feature. For each person: what happens to the group if they leave? Show this as a visual table where each row is a person and the columns show the impact of their departure on group DTI, affordability, etc. Color-code: green if the group survives, red if it doesn't. This immediately reveals critical dependencies.
+
+AI assessment appears inline, interpreting the numbers.
+
+### Split Tab (was Contributions)
+
+The key question: **"How should these people split the cost?"**
+
+Three models calculated simultaneously:
+
+1. **Even split** — everyone pays the same dollar amount. Show what % of each person's income this represents.
+2. **Income-based** — everyone pays the same % of their income. Show the dollar amounts.
+3. **Balanced** (was Hybrid) — half even, half income-based. Show both dollar and percentage.
+
+For each model, show each person's **breathing room** — money left after existing debts and the housing payment.
+
+**Person toggle** — the org can toggle people in/out and watch all three models recalculate instantly. This is the hero interaction of the product.
+
+**Custom split** — the org can manually set amounts per person, starting from any model as a baseline.
+
+AI analysis appears inline, comparing the models for this specific group.
+
+### Report Tab
+
+Compiles everything into a document the group can bring to a lender or landlord. Not new analysis — just the insights that already exist, stitched together.
+
+---
+
+## Consumer Experience (the Share Link)
+
+A person in the group receives a link. They open it and see a simple, friendly form — not an institutional intake process.
+
+The page should feel like: "Hey, [Group Name] needs your info to figure out the housing situation. Fill this out and you're done."
+
+Fields: first name, last name, date of birth, SSN, current address, monthly income, employment type.
+
+Consent checkbox: "I authorize [Organization Name] to run a credit check and background screening on my behalf."
+
+After submission: "You're all set! [Organization Name] will follow up with next steps."
+
+That's it. No account, no login, no dashboard.
+
+---
+
+## Language Guide
+
+Replace this → With this:
+
+- "Project" → "Group"
+- "Member" → "Person" (in UI) / "member" (in code is fine)
+- "Intake form" → "Info form" or just "form"
+- "Intake link" → "Share link" or "invite link"
+- "Organization" → Keep for the backend, but in UI say "your dashboard" or just use the org name
+- "Org status" → "Status" (the context makes it clear)
+- "Contribution modeler" → "Split calculator" or "Cost split"
+- "Contribution model" → "Split model" or "Split option"
+- "Equal split" → "Even split"
+- "Income proportional" → "Income-based"
+- "Hybrid" → "Balanced"
+- "Resilience matrix" → "What-if analysis" or "Dependency check"
+- "Borrowing power" → "Buying power" or "What you can afford"
+- "Debt-to-income ratio" → "DTI" (for the org) or "debt vs income" (in plain language)
+- "Processing status" → "Check status"
+- "Approved / Flagged / Ineligible" → "Ready / Flagged / Not eligible"
+- "Intake" → "Onboarding" or "Setup"
+
+---
+
+## Design Direction Addendum
+
+The existing design system (glass cards, blue gradient, Outfit font, etc.) stays. Here are the additional design principles for the reframe:
+
+### People-First Layout
+
+The People tab should feel like looking at a team roster, not a data table. Each person card should have visual personality — their avatar color, their name prominent, a quick-read indicator of their financial health. The current card layout (name, unit type, SSN, income, employment, submitted date, four CRS status dots) is correct in content but needs hierarchy: name and readiness badge should dominate, with details secondary.
+
+### Property Context Always Visible
+
+The property info (location, price, monthly cost) should be a persistent header or banner on the group detail page. Every analysis on every tab is in the context of *this specific property at this specific cost.* Don't make the user hold that in their head.
+
+### The Split Calculator is the Star
+
+The Split tab should feel interactive, alive, and immediately understandable. The person toggle should be prominent and satisfying — not a tiny checkbox but a meaningful interaction (toggle switches with names, or person cards that dim/highlight). When someone is toggled out, the numbers should animate to their new values. This is the demo moment.
+
+### Breathing Room is the Emotional Hook
+
+For each split model, the most important number isn't the payment amount — it's the breathing room. How much does this person have left after paying their debts and their housing share? Color-code it aggressively: green if comfortable (>$1000), yellow if tight ($500-$1000), red if squeezed (<$500). This is what makes the abstract math feel real and human.
+
+### AI Insights are Conversational
+
+The AI-generated text should read like a smart advisor talking to the org user, not like a report. Short paragraphs, specific references to people by first name, concrete observations. "Mei's gig income makes her the most volatile contributor — if she has a slow month, the group's DTI jumps from 38% to 46%." Not: "The group exhibits moderate income concentration risk."
+
+---
+
+## What Changes in the Backend
+
+Almost nothing. The data model is the same. The API contracts are the same. The only changes:
+
+1. **Rename in API responses** where it affects the frontend: `intakeToken` → `shareToken`, `intakeLink` → `shareLink`. Or just handle this in the frontend mapping.
+
+2. **Gemini prompts** should use the new language. Don't say "co-op member" — say "person in the group." Don't say "organizational assessment" — say "group financial picture."
+
+3. **Project model** can add a `groupName` alias or just use `projectName`. No schema changes needed.
+
+The backend doesn't care what the frontend calls things. Focus the changes on the UI layer and the Gemini prompt language.
+
+---
+
+## Demo Flow (Revised)
+
+The demo should tell a story, not walk through features.
+
+**Setup:** "Meet the Sunset Crew — four friends who want to rent an apartment together near SF State. They make different amounts, have different credit histories, and need to figure out a fair way to split $4,800 a month in rent."
+
+**People:** Click into the group. Show the four people. Click into Mei — she works gig jobs, makes $3,200/month, has thin credit. Click into Sam — salaried, $6,800/month, strong credit. The contrast is immediately visible.
+
+**Financials:** "Can they afford this place?" Show the group DTI, the income diversity. Show the resilience matrix — what happens if Mei leaves? What about Sam? Sam is the critical dependency. The group falls apart without Sam but could absorb losing Mei.
+
+**Split:** "How should they split it?" Show even split — $1,200 each. That's 37.5% of Mei's income but only 17.6% of Sam's. Income-based — Mei pays $878, Sam pays $1,866. Show the breathing room. Toggle Sam out — watch the remaining three people's payments spike. Toggle Sam back in.
+
+**Report:** "Now they can walk into a landlord's office with a real financial package that shows they can handle this."
+
+The story is: regular people, real problem, this tool solves it. Not: "we built a fintech platform for cooperative housing formation organizations."
+
+---
+
+## Priority for Remaining Hackathon Time
+
+You have until 11am Sunday. Focus on:
+
+1. **Rename everything in the frontend** to match the new language. This is fast and high-impact.
+2. **Restructure the People tab** so each person card immediately shows readiness, not just CRS check dots.
+3. **Make the Split tab the hero** — smooth toggles, animated numbers, prominent breathing room.
+4. **Update Gemini prompts** to use conversational, people-first language.
+5. **Practice the demo story** — lead with the human problem, show the tool solving it.
+
+Do NOT spend time on: the report export, mobile responsiveness, edge cases, or making the project list page fancy. The judges will see one group walked through end to end.

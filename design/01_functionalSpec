@@ -1,0 +1,267 @@
+# CommonGround — Functional Specification (Updated)
+
+## What Is This Product
+
+A financial assessment platform for property owners and managers. It answers one question: can this group of people afford this property together, and how should they split the cost?
+
+When multiple people apply to rent or buy a property together — friends sharing an apartment, a family with multiple earners, coworkers going in on a house — the property manager needs to evaluate the group's collective financial picture. CommonGround pulls real credit data for every applicant, models the group's finances, structures fair cost splits, delivers AI-powered analysis, and generates personalized financial literacy reports for each applicant — all in one place.
+
+## Who Uses It
+
+**Primary user:** Property owners, property managers, landlords, and real estate agents. Anyone making a business decision about whether to rent or sell to a group of people.
+
+**Secondary user:** Applicants. They interact with the product through an application form and receive a personalized financial literacy report via email after the manager reviews their application.
+
+## The Problem
+
+When a group of people applies for housing together, the property manager has no efficient way to evaluate them as a unit. They collect individual credit reports one by one, maybe in a spreadsheet. There is no standardized way to see the group's collective creditworthiness. There is no tool to model how the group should split costs fairly. The manager either eyeballs it, picks the person with the best credit as the primary leaseholder, or just goes with gut instinct.
+
+No tool exists that pulls real credit data for a group of applicants, models their collective financial position, surfaces risks and dependencies, and helps structure fair cost splits — all with AI analysis baked in.
+
+## What We Are Building For the Hackathon
+
+The full property manager dashboard, a minimal applicant form, and applicant-facing financial literacy reports. No applicant portal, no lender marketplace, no payment processing, no lease generation.
+
+---
+
+## Applicant Experience
+
+### Application Form
+
+An applicant receives a link from the property manager. The link opens a simple, friendly single-page form. The page communicates: "Your group needs your info to figure out the housing situation. Fill this out and you're done."
+
+The applicant provides their first name, last name, email address, date of birth, Social Security number, current address, self-reported monthly income, and employment type (salaried, freelance, government, gig, retired, or other).
+
+The applicant checks a consent box authorizing the property manager to run a credit check and background screening on their behalf.
+
+The applicant submits the form.
+
+The applicant sees a confirmation message: "You're all set! We'll follow up with next steps."
+
+### Financial Literacy Report
+
+After the manager reviews the application and generates reports, each applicant receives an email containing a link to their personalized financial literacy report. No login required — the link opens their report directly.
+
+The report contains only that applicant's own data — never any other applicant's information, group metrics, or manager notes. It reframes the same credit data used for evaluation into an educational, empowering document that helps the applicant understand their financial position in the context of this housing opportunity.
+
+---
+
+## Property Manager Experience
+
+### Homepage — Properties View
+
+The manager logs in and lands on the Properties page. This is a building-centric view that organizes all applications by property.
+
+**Header row:** "Properties" title on the left with a subtitle showing the count of buildings, active applications, and vacant units. "+ Add Property" button on the right.
+
+**Search bar:** Below the header, a search bar filters properties by name, address, or city as the manager types. Shows result count and a clear button.
+
+**Portfolio stats strip:** A single horizontal row showing five aggregate metrics across all properties:
+
+- **Revenue** — sum of monthly cost for all active applications
+- **Screened** — shown as ready/total (e.g. "6 of 10"), how many applicants have completed all CRS checks vs total submitted. Hoverable: shows per-property, per-unit screening progress. Each row clickable to navigate to that application.
+- **Active Applications** — count of all applications not in Empty or Approved stage
+- **Vacant** — count of units with no linked application. Amber if any, green if zero. Hoverable: lists which specific units are vacant. Each row clickable.
+- **Needs Attention** — count of items requiring manager action: failed CRS checks, flagged applicants, stalled applications. Red when above zero. Hoverable: lists each issue with property, unit, and specific problem. Each row clickable.
+
+Hoverable stats show dropdowns with per-property, per-unit detail. Every number in the dropdown adds up exactly to the stat total. These are computed from actual data, not AI-generated.
+
+**AI insights — two cards:**
+
+**"Recent Activity"** — 1 sentence. What changed recently. References specific property names, unit numbers, and timeframes. Chronological. Example: "3 new applications submitted to Dunder Mifflin Plaza in the last 2 hours, Schrute Farms screening completed."
+
+**"Action Required"** — 1 sentence. What needs the manager's intervention right now. Specific properties, specific issues, specific actions. Example: "2 failed identity checks at Dunder Mifflin Plaza Unit 1A need retry, 1 flagged applicant at The Beasley Cottage awaiting review." If nothing needs attention, says "No actions required" and stays green.
+
+Neither card contains financial data — no DTI numbers, credit scores, or income figures. Those belong inside each application's tabs.
+
+**Building list:** All properties appear in a vertical list. Each property is one card with a stage pill showing the application stage.
+
+### Building List — Row Layout
+
+Each row in the building list leads with the property type label (apartment, condo, house, flat), followed by the name and address. A stage pill appears next to the address showing the application stage. For multi-unit buildings with multiple applications, one pill per active application is shown. Stats on the right: units, active, vacant, revenue.
+
+### Application Stages
+
+Every application progresses through four stages. The first two transitions are automatic; the final approval is manual.
+
+**Empty** (gray): Application created, invite link generated, no applicants have submitted yet. Default state on creation.
+
+**In Progress** (amber): At least one applicant has submitted their form. CRS checks are running or partially complete. Data is still flowing in. The manager is waiting, not deciding. Auto-advances from Empty when the first applicant submits.
+
+**Review** (blue): All expected applicants have submitted and all CRS screening is complete for every applicant. The manager is actively evaluating — financials, simulations, safety, splits. Auto-advances from In Progress when expectedMemberCount is met and every member has all 4 CRS checks complete.
+
+**Approved** (green): Decision made, terms accepted. Manual only — the manager clicks to approve.
+
+The manager can also manually advance or revert stages at any time via the stage dropdown inside the application view.
+
+### Creating an Application
+
+The manager creates a new application by entering a group name, the property address, the estimated total monthly housing cost, the target property price range (optional — only relevant for purchases), and the expected number of applicants.
+
+The system generates a unique invite link tied to this application. The manager shares this link with applicants however they normally communicate — email, text, in-person. Applications can be linked to a specific unit within a multi-unit property, or they can exist standalone.
+
+### Reviewing Individual Applicants — People Tab
+
+The People tab is an overview. It answers one question: who are these people and what's their status? Deep analysis belongs in other tabs.
+
+**Search bar:** Filters applicants by name or employment type.
+
+**Group overview AI insight:** A card above the people list with a 2-3 sentence overview of the group composition.
+
+Each person occupies a row with two layers:
+
+**Layer 1 (always visible):** The person's name, employment type, and submission date on the left. On the right, their monthly income, credit score (color-coded green at or above 740, amber at or above 670, red below 670), a payment trajectory arrow (↑ green for improving, → gray for stable, ↓ red for declining), and monthly debt. Status badge (Cleared, Pending, Flagged, Declined). Chevron to expand.
+
+**Layer 2 (expanded):** A single summary line with key indicators — not full screening cards. Credit score and on-time percentage, background status (Clean or record count), identity status (Verified or Failed with score). Below that, the AI insight sentence for this person. No tradeline bars, no revolving utilization, no delinquency detail, no criminal/eviction record cards. Those live in Financials and Safety tabs.
+
+**Person detail overlay:** Clicking a person's name or "View Details" opens a full overlay panel showing their complete profile — credit report with expandable tradelines and delinquency detail, tradeline composition, background records, identity breakdown, status controls, and manager notes. This is the only place on the People tab where the full individual profile appears.
+
+### Group Financials — Financials Tab
+
+Once at least two applicants have completed their applications, the group financials automatically populate.
+
+**Collective financial picture:** Combined monthly income, combined monthly debt obligations, group debt-to-income ratio measured against the property's monthly cost, estimated buying power.
+
+**Group credit composition:** Per-person tradeline composition bars stacked vertically for visual comparison. Each bar shows the person's debt type breakdown (revolving, installment, mortgage, other). Person's name on the left, revolving utilization percentage on the right. This lets the manager visually compare debt profiles across the group.
+
+**Income sources:** A summary of how varied the group's income sources are. Diverse employment types mean more resilience; concentrated types mean correlated risk.
+
+**Risk analysis (dependency simulation):** The manager selects one or more applicants via checkboxes to simulate those people leaving. The system recalculates the group's financial position without the selected people. Multi-select interface for simultaneous departure simulation.
+
+**AI analysis (auto-generated):** Narrative insights appear inline throughout the tab, placed directly next to the data they interpret.
+
+### Cost Split — Breakdown Tab
+
+Three ways to divide the monthly cost, calculated simultaneously for side-by-side comparison. Each model name has a question mark icon that shows a tooltip explaining how it works on hover or tap.
+
+**Equal:** Total monthly cost divided equally among all people. Everyone pays the same dollar amount. The dashboard shows what percentage of each person's income this represents — making visible that equal dollars means unequal burden. Tooltip: "Total monthly cost divided equally among all applicants. Everyone pays the same dollar amount regardless of income."
+
+**Income-Based:** Each person pays in proportion to their share of the group's total income. Higher earners pay more in dollars, but everyone pays the same percentage of their income toward housing. Tooltip: "Each person pays in proportion to their share of the group's total income. Higher earners pay more in dollars, but everyone pays the same percentage of their income toward housing."
+
+**Balanced:** Half the total cost is split equally, the other half split proportionally by income. Combines shared baseline responsibility with income-sensitive fairness. Tooltip: "Half the total cost is split equally, half is split by income proportion. Combines shared baseline responsibility with income-sensitive fairness."
+
+For every model, the dashboard shows each person's payment amount, payment as percentage of income (color-coded: green at or below 28%, amber at or below 35%, red above), and financial breathing room — income minus existing debt minus housing payment.
+
+**Person toggle:** The manager can toggle people in and out of the calculation and watch all three models update in real time.
+
+**Custom split:** The manager can manually set a dollar amount for each person. The system tracks total assigned versus total monthly cost and flags any shortfall, overage, or person above 30% of income toward housing.
+
+**AI analysis (auto-generated):** A contextual comparison of the three models appears inline, tailored to this specific group's income distribution.
+
+### Safety Tab
+
+A dedicated tab for criminal, eviction, and identity review. Facts only — no automated decisions.
+
+**Fair housing disclaimer:** A persistent amber bar at the top of the tab referencing HUD guidance. The product never auto-disqualifies based on records. The manager makes all decisions.
+
+**Group overview:** One card per person showing first name and last initial with icon-based status indicators for criminal, eviction, and identity — color-coded by status.
+
+**Per-person detail cards (expandable):** If a person has records, each shows: offense description, type badge (felony/misdemeanor), disposition badge (Dismissed in green, Convicted in red, Pending in amber), jurisdiction, date with recency label (e.g. "4 years ago"). AI safety assessment in an accent card below.
+
+**Safety-specific AI rules:** Never characterize a person based on their record. Never use "dangerous," "risky," "untrustworthy," or "criminal" to describe people. Never recommend approval or denial. Only state what the record contains, when it occurred, and its disposition. Frame around what the record means for the application, not the person.
+
+### Summary Tab — Applicant Reports
+
+The Summary tab is where the manager generates reports and manages delivery to applicants.
+
+**Top section — Report generation:** "Applicant Reports" header with a "Generate" button (the only user-triggered AI action besides the compiled summary). Split model selector (Equal, Income-Based, Balanced) determines which payment amounts appear in applicant reports. Status line shows which model was used and when reports were last generated. If the manager selects a different model than what was used, a note indicates reports need regeneration.
+
+**Applicant report list:** One row per person showing name, employment type, and a clear status:
+
+- **Not Sent** (gray) — Report generated but not emailed to the applicant yet
+- **Sent** (blue) — Email with report link sent to the applicant
+- **Viewed** (green) — Applicant has opened the report
+
+**Actions per person:**
+
+- **Send** (primary) — Emails the report to the applicant's email from their intake form. After sending, button text changes to "Sent ✓" for 3 seconds, then reverts to "Resend."
+- **Preview** — Opens the report so the manager can review before sending.
+- **Copy Link** (secondary) — Copies the report URL. Button text changes to "Copied ✓" for 3 seconds.
+
+**Send All** button sends reports to all applicants in "Not Sent" status. Button text changes to "Sending..." then "All Sent ✓" for 3 seconds.
+
+**Regenerate** button text changes to "Regenerating..." while processing, then "Done ✓" for 3 seconds, then reverts. Status line updates with new model and timestamp.
+
+**Filter chips** next to the search bar: Not Sent, Sent, Viewed — each with a count.
+
+### Applicant Financial Literacy Report
+
+A completely different visual experience from the manager dashboard. Light background, warm, approachable design. This is what the applicant sees when they click the link in their email. No login required.
+
+The report contains only that person's data — strict data isolation. Never includes other applicants' information, group metrics, manager notes, rankings, or comparisons. The applicant's split amount is presented as "your share of the monthly cost" with no explanation of how it was derived relative to others.
+
+**Header:** CommonGround branding, "Your Financial Profile," property address, "Prepared for [first name]" with date.
+
+**Section 1 — Your Financial Snapshot:** Credit score with plain-language category label (Excellent/Good/Fair), monthly income, monthly debt with DTI, payment trajectory. AI narrative explaining their snapshot in warm, accessible language.
+
+**Section 2 — Your Credit Profile:** Credit score on a visual 300-850 scale with labeled threshold zones, revolving utilization with target benchmark, tradeline composition breakdown. AI narrative explaining what it means and one concrete action.
+
+**Section 3 — Your Payment History:** Recent late payments vs older late payments vs months analyzed. AI narrative on trajectory trend — affirming progress, consistency, or framing decline constructively.
+
+**Section 4 — This Housing Cost & You:** Monthly share amount, projected DTI after housing, breathing room. Visual bar showing income divided into: existing debt, housing payment, remaining breathing room with dollar amounts. AI narrative on affordability with DTI guideline explanation.
+
+**Section 5 — Your Next Steps:** AI-generated actionable advice specific to their data. References actual numbers. Constructive framing — "where you have the most leverage" not "what's wrong."
+
+**Section 6 — Background & Identity:** Three status cards for criminal, eviction, identity. Clear or records found. No editorial language.
+
+**Footer:** Disclaimer that this is informational, not a credit decision.
+
+**AI narrative tone (applicant-facing):** Warm, educational, empowering. Explains concepts in plain language as if the reader has never seen a credit report. Never judgmental. Avoid: concerning, alarming, problematic, risky, poor, bad, weak, insufficient. Use instead: worth monitoring, area for growth, room for improvement, opportunity to strengthen. Every sentence references a specific number. Always ends constructively.
+
+### AI Insights Are Automatic and Integrated
+
+This is a core product principle. AI analysis is not a feature the user opts into. It is woven into the fabric of the dashboard.
+
+**Per-person analysis** generates automatically as the final step of screening data processing.
+
+**Group-level analysis** generates automatically whenever the group composition changes.
+
+**Homepage insights** generate automatically — Recent Activity and Action Required.
+
+**Safety assessments** generate automatically when criminal or eviction records exist.
+
+**The manager never clicks a "Generate" or "Analyze" button** except for the Summary tab report generation and compiled financial summary.
+
+### AI Insight Content Rules
+
+All manager-facing AI insights follow strict content rules. Every insight is 1-3 sentences of flowing prose. No dashes, bullet points, numbered lists, or line breaks. No inferences about motivations, character traits, or future behavior. No speculation about why a data point exists. Every sentence references a specific number, percentage, or person's name.
+
+Homepage insights are exactly 1 sentence each. All other insights are 2-3 sentences.
+
+### Financial Summary
+
+When the manager is ready to document the group's assessment, they generate a financial summary. The summary compiles existing insights into a single exportable document with AI-written transitions.
+
+---
+
+## Key Business Rules
+
+**Group size:** Minimum 2 applicants, maximum 10 for the hackathon scope.
+
+**Partial data:** The dashboard shows whatever data is available. Group financials require minimum 2 completed applicants.
+
+**Privacy:** Applicants never see each other's individual data. Applicant reports contain only that person's own data. The manager sees everything.
+
+**Screening is informational:** Criminal and eviction records are presented as facts. The product does not automatically disqualify anyone. The manager makes all decisions.
+
+**Income is self-reported.** The product does not verify income.
+
+**The product does not approve loans or leases.** It is an informational tool for well-informed decisions.
+
+**AI insights are automatic** except for report generation and financial summary compilation.
+
+**Application stages:** Empty and In Progress auto-advance based on data state. Review auto-advances when all expected applicants have completed screening. Approved is manual only. The manager can manually override any stage.
+
+---
+
+## What Success Looks Like
+
+A property manager creates an application for a 4-bedroom apartment, sends invite links to four applicants, and within a day has a complete picture of whether this group can afford the place — with AI analysis already baked in, split models calculated, safety screening reviewed, and personalized financial literacy reports ready to send to each applicant.
+
+The manager logs into the Properties page, sees two focused insight cards telling them what changed and what needs their attention, scans hoverable stats to drill into specific units, then clicks into the application that needs their review.
+
+Each tab serves a distinct purpose: People for the overview, Financials for credit depth and group analysis, Breakdown for cost split comparison, Safety for background review with fair housing compliance, Summary for report management and delivery.
+
+The applicant receives an email with a link to a warm, educational report that helps them understand their own financial position — turning the screening process into a financial literacy moment.
+
+No spreadsheets. No guesswork. No weeks of back-and-forth. The manager opens the dashboard and the answer is already there.

@@ -1,0 +1,207 @@
+# CommonGround — Implementation Guide
+
+## Purpose
+
+This document defines the design patterns, coding conventions, data handling rules, and shared schemas that every contributor follows. It exists to keep the codebase consistent across a team working fast under hackathon conditions. Read this before writing any code.
+
+---
+
+## Project Structure
+
+The project is split into three top-level directories that never import from each other except through defined interfaces.
+
+**client** — React frontend. Contains all UI components, pages, styling, and frontend state management. Communicates with the backend exclusively through HTTP requests to the API. Never imports backend code. Never calls external services directly.
+
+**server** — Node.js/Express backend. Contains all API routes, business logic, external service integrations, and database operations. This is the only layer that talks to CRS, Gemini, and MongoDB. Never contains rendering logic or UI concerns.
+
+**shared** — Constants, enums, and type definitions used by both client and server. This is the only directory that both sides may import from. It contains no logic — only definitions.
+
+---
+
+## Separation of Concerns
+
+### Frontend Responsibilities
+
+Rendering UI based on data received from the backend. Collecting user input and validating it at the form level (required fields, format checks). Sending requests to backend API endpoints. Managing UI state (which tab is open, loading spinners, error messages). Never performing business calculations. Never calling CRS, Gemini, or MongoDB.
+
+### Backend Responsibilities
+
+Receiving requests from the frontend and validating them at the business level. Orchestrating calls to external services (CRS, Gemini). Performing all business calculations (group metrics, contribution models, resilience matrix). Reading from and writing to MongoDB. Enforcing authorization (verifying the requesting org owns the project). Transforming data between formats (intake form data to CRS request formats, CRS responses to stored member data, stored data to Gemini prompts). Returning only the data the frontend needs — never raw CRS responses or full database documents.
+
+### Shared Responsibilities
+
+Defining enums for values used on both sides (project statuses, employment types, unit sizes, member org statuses). Defining the shape of API request and response bodies so frontend and backend agree on contracts. Defining constants (affordability thresholds, unit size weights, DTI boundaries).
+
+---
+
+## Design Patterns
+
+### Backend: Route → Controller → Service → Repository
+
+Each API request flows through four layers.
+
+**Route** — Defines the HTTP method and path. Attaches middleware (authentication). Passes the request to the controller. Contains no logic.
+
+**Controller** — Parses and validates the request. Calls one or more services. Formats the response. Handles HTTP status codes and error responses. Contains no business logic or database queries.
+
+**Service** — Contains all business logic. Performs calculations. Orchestrates calls to repositories and external service wrappers. This is where group metrics are computed, contribution models are calculated, and Gemini prompts are constructed. Services never access the database directly — they go through repositories.
+
+**Repository** — Handles all MongoDB operations. Queries, inserts, updates, deletes. Returns plain data objects. Contains no business logic. If the database technology changed, only this layer would need rewriting.
+
+### Backend: External Service Wrappers
+
+Each external service (CRS, Gemini) gets its own wrapper module. The wrapper handles authentication, request formatting, response parsing, error handling, and retries. The rest of the backend calls the wrapper's clean interface and never constructs raw HTTP requests to external services.
+
+The CRS wrapper exposes functions like pullCredit(memberData), checkCriminal(memberData), checkEviction(memberData), and verifyIdentity(memberData). Internally it handles the date format and SSN format transformations. The service layer passes in a single member object and gets back a clean result.
+
+The Gemini wrapper exposes functions like assessMember(memberSummary), assessGroup(groupProfile), analyzeModels(modelOutputs), and generateReport(projectData). Internally it handles prompt construction, API calls, and response extraction. The service layer never writes prompt text directly.
+
+### Frontend: Page → Component → Hook
+
+**Page** — A top-level view corresponding to a route (project list page, project detail page, member profile page, contribution modeler page). Pages compose components and manage data fetching.
+
+**Component** — A reusable UI element (member card, metric display, model comparison table, resilience matrix visualization). Components receive data through props. They do not fetch data themselves.
+
+**Hook** — Custom hooks encapsulate data fetching and frontend state logic (useProject, useMembers, useContributions). Hooks call the backend API and manage loading, error, and data states. Pages use hooks to get data and pass it to components.
+
+---
+
+## Data Handling Rules
+
+### Sensitive Data
+
+**SSNs** are the most sensitive data in the system.
+
+On the frontend, the intake form collects the SSN and sends it to the backend in a single POST request over HTTPS. The frontend does not store, cache, or log the SSN anywhere. After submission, the frontend never sees it again.
+
+On the backend, the SSN is used immediately to make CRS API calls. It is stored in MongoDB for potential re-pulls. It is never included in API responses to the frontend. It is never included in Gemini prompts. It is never written to log files.
+
+On the org dashboard, members are identified by name and last-4 of SSN only. The full SSN is never displayed.
+
+### Data Transformation Points
+
+Member intake data arrives in one format from the frontend form. It must be transformed differently for each CRS endpoint. These transformations happen inside the CRS wrapper, never in the controller or service layer.
+
+CRS responses arrive with varying structures per endpoint. The CRS wrapper normalizes each response into a consistent internal format before returning it to the service layer. The service layer never parses raw CRS JSON.
+
+Data sent to Gemini is a further transformation — stripping PII, summarizing credit data into narrative-friendly structures, and adding context about the group. This transformation happens inside the Gemini wrapper.
+
+Data returned to the frontend is yet another transformation — removing sensitive fields, computing display values, and structuring responses to match what the UI needs. This happens in the controller layer.
+
+### Data Flow Summary
+
+Frontend form → Backend controller (validates) → Backend service (processes) → CRS wrapper (transforms and calls CRS) → CRS wrapper (normalizes response) → Backend service (computes metrics) → Backend repository (stores in MongoDB) → Backend controller (strips sensitive fields, formats response) → Frontend (renders).
+
+At no point does raw data from one layer pass through unchanged to another. Every boundary is a transformation point.
+
+---
+
+## Common Schemas
+
+These are the shared data shapes that both frontend and backend agree on. They define the API contract.
+
+### Enums
+
+**Project Status:** intake, assessment, modeling, ready.
+
+**Member Org Status:** pending, approved, flagged, ineligible.
+
+**Employment Type:** salaried, freelance, government, gig, retired, other.
+
+**CRS Check Status:** pending, complete, failed.
+
+**Contribution Model Type:** equal, proportional, hybrid, custom.
+
+### Constants
+
+**Affordability threshold:** 30% of gross monthly income toward housing is the standard warning level.
+
+**DTI boundaries:** Below 36% is healthy. 36% to 43% is acceptable. Above 43% is risky and exceeds most lending thresholds.
+
+**Resilience threshold:** 43% DTI. If removing a member pushes the group above this, they are flagged as a critical dependency.
+
+**Hybrid split ratio:** 50% equal, 50% income proportional. This is a default that could be made adjustable in production.
+
+### API Response Shapes
+
+**Project summary** (returned in project list): Project ID, project name, status, member count completed versus expected, date created.
+
+**Project detail** (returned when viewing a project): Everything in the summary plus estimated monthly cost, target price range, location, intake link, array of member summaries.
+
+**Member summary** (returned within project detail): Member ID, first name, last initial, last 4 of SSN, submission date, org status, processing status for each CRS check.
+
+**Member full profile** (returned when viewing individual member): Everything in the summary plus credit score, total debt, monthly obligations, payment history percentage, delinquency count, public records count, tradeline array, criminal records array, eviction records array, identity verification score, self-reported income, employment type, personal DTI, Gemini individual assessment text, org notes.
+
+**Group analytics** (returned from analytics endpoint): Combined income, combined debt, combined monthly obligations, group DTI, estimated max monthly payment, estimated borrowing power, income diversity score, resilience matrix (array of member ID, DTI-without-them, and critical-dependency boolean).
+
+**Contribution model output** (returned for each model): Model type name, array of per-member breakdowns (member ID, display name, monthly payment, percentage of income, breathing room), and for custom models also a balance status (balanced, shortfall amount, or overage amount).
+
+**Gemini insight** (returned wherever AI analysis appears): Text content, generation timestamp, context type (individual, group, models, report).
+
+---
+
+## Error Handling Patterns
+
+### External Service Failures
+
+CRS and Gemini calls can fail. The system must handle this gracefully.
+
+If a CRS call fails for one member, that specific check is marked as "failed" on the member record. Other checks that succeeded are preserved. The org dashboard shows which checks need retry. A failed credit pull blocks the member from being included in group analytics. A failed criminal or eviction check does not — the org is informed and can decide whether to proceed.
+
+If Gemini fails, the system functions without AI insights. All quantitative features (group analytics, contribution models, resilience matrix) work without Gemini. The AI insight sections show a message indicating analysis is temporarily unavailable. The system never blocks core functionality on Gemini availability.
+
+### Validation Failures
+
+Frontend validates form completeness and basic format (SSN is 9 digits, date is valid, income is a positive number). Invalid forms are not submitted.
+
+Backend re-validates everything the frontend checked plus business rules (member belongs to this project, project belongs to this org, custom contribution amounts sum to total cost). Backend never trusts frontend validation alone.
+
+### Error Response Format
+
+All error responses from the backend follow the same shape: an error boolean set to true, a human-readable message string, and optionally a field name indicating which input caused the problem. The frontend uses this to display contextual error messages.
+
+---
+
+## Naming Conventions
+
+**Files:** Lowercase with dashes. member-service.js, project-controller.js, use-project.js.
+
+**Functions:** Camel case. pullCredit, calculateGroupDTI, assessMember.
+
+**Database fields:** Camel case matching the schema definitions in this document. firstName, monthlyIncome, groupDTI.
+
+**API endpoints:** Lowercase with dashes. /api/projects/:projectId/members/:memberId.
+
+**Enums and constants:** Defined once in the shared directory. Imported everywhere they are used. Never hardcoded as strings in business logic.
+
+**Component files:** Pascal case. MemberCard.jsx, ContributionModeler.jsx, ResilienceMatrix.jsx.
+
+---
+
+## Git Workflow
+
+All work happens on the commonground branch. Main stays empty.
+
+Commit frequently with descriptive messages. Prefer small commits that each accomplish one thing over large commits that change everything.
+
+Commit message format: area followed by a short description. Examples: "server: add CRS credit pull wrapper", "client: build intake form layout", "shared: define contribution model enums", "server: implement resilience matrix calculation".
+
+If multiple people are working simultaneously, communicate before pushing to avoid merge conflicts on the same files. The safest split is one person on client, one person on server, and coordination on the shared directory.
+
+---
+
+## Hackathon-Specific Rules
+
+Do not over-engineer. If a simple solution works, use it. Abstractions that save time in a six-month project waste time in a 48-hour hackathon.
+
+Do not build authentication properly. Use a hardcoded org ID or a simple API key. Real auth is not what judges are evaluating.
+
+Do not optimize database queries. You have five members in a project. Performance is irrelevant.
+
+Do build the CRS integration properly. That is what the sponsor cares about.
+
+Do build the contribution modeler interaction properly. That is what makes the demo compelling.
+
+Do make Gemini responses feel polished. The AI insights are what makes this product feel intelligent rather than just a dashboard of numbers.
+
+Do keep the UI clean and intuitive. Judges evaluate design quality. A polished frontend with three features beats an ugly frontend with ten features.
