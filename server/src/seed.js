@@ -5,7 +5,7 @@
  * Layout:
  *   House 1  — 2 good applicants (approved)
  *   House 2  — 2 bad applicants with records (negotiating)
- *   Apartment — 3 units: 2 occupied with good people (mixed income), 1 vacant
+ *   Apartment — 5 units: all occupied with good people (mixed income, professionals)
  *
  * ALL screening data comes from live CRS sandbox API calls.
  * Only self-reported data (income, employment, notes) is demo data.
@@ -30,7 +30,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const MAX_RETRIES = 4;
 const CRS_DELAY_MS = 500;
 
-const DEMO_TOKENS = ['demo-halpert', 'demo-schrute', 'demo-dunder-1a', 'demo-dunder-1b', 'demo-beasley'];
+const DEMO_TOKENS = ['demo-halpert', 'demo-schrute', 'demo-dunder-1a', 'demo-dunder-1b', 'demo-dunder-2a', 'demo-dunder-2b', 'demo-dunder-3a', 'demo-beasley'];
 const LEGACY_TOKENS = ['demo-noriega', 'demo-divisadero', 'demo-irving-1a', 'demo-irving-1b', 'demo-irving-st', 'demo-fruitvale', 'demo-clement-st', 'demo-student-coop', 'demo-oakland-hills', 'demo-eastbay-family', 'demo-sunset-ridge'];
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -97,7 +97,9 @@ const BUILDINGS = [
     units: [
       { name: '1A', bedrooms: 2, monthlyCost: 2400 },
       { name: '1B', bedrooms: 2, monthlyCost: 2400 },
-      { name: '2A', bedrooms: 1, monthlyCost: 1800 },  // vacant
+      { name: '2A', bedrooms: 1, monthlyCost: 1800 },
+      { name: '2B', bedrooms: 1, monthlyCost: 1800 },
+      { name: '3A', bedrooms: 2, monthlyCost: 2600 },
     ],
   },
   {
@@ -271,7 +273,107 @@ const DEALS = [
     ],
   },
 
-  // Unit 2A is intentionally left vacant — no deal created
+  // ─── Apartment Unit 2A: Good, young professionals ────────
+  {
+    name: 'Dunder Mifflin Plaza — Unit 2A',
+    buildingIdx: 2, unitIdx: 2,
+    estimatedMonthlyCost: 1800,
+    location: { city: 'Scranton', state: 'PA' },
+    expectedMemberCount: 2,
+    intakeLinkToken: 'demo-dunder-2a',
+    stage: 'approved',
+    members: [
+      {
+        firstName: 'Zara', lastName: 'Nguyen', email: 'zara.nguyen@demo.commonground.co',
+        monthlyIncome: 5800, employmentType: 'salaried',
+        orgStatus: 'approved',
+        orgNotes: 'UX designer at a mid-size agency. Strong salaried income.',
+        dateSubmitted: new Date(Date.now() - 6 * DAY),
+        creditPersona: CREDIT.BAMBIKO, criminalPersona: CRIMINAL.BRANDIS,
+        evictionPersona: EVICTION.RAY_CLEAN, flexidPersona: FLEXID.JJUNIPER, demoCviScore: 43,
+      },
+      {
+        firstName: 'Elijah', lastName: 'Foster', email: 'elijah.foster@demo.commonground.co',
+        monthlyIncome: 4600, employmentType: 'salaried',
+        orgStatus: 'approved',
+        orgNotes: 'Junior accountant. Reliable income with good credit habits.',
+        dateSubmitted: new Date(Date.now() - 5 * DAY),
+        creditPersona: CREDIT.BLACK, criminalPersona: CRIMINAL.CONSUMER,
+        evictionPersona: EVICTION.RAY_CLEAN, flexidPersona: FLEXID.COPE, demoCviScore: 39,
+      },
+    ],
+  },
+
+  // ─── Apartment Unit 2B: Good, healthcare workers ────────
+  {
+    name: 'Dunder Mifflin Plaza — Unit 2B',
+    buildingIdx: 2, unitIdx: 3,
+    estimatedMonthlyCost: 1800,
+    location: { city: 'Scranton', state: 'PA' },
+    expectedMemberCount: 2,
+    intakeLinkToken: 'demo-dunder-2b',
+    stage: 'review',
+    members: [
+      {
+        firstName: 'Amara', lastName: 'Osei', email: 'amara.osei@demo.commonground.co',
+        monthlyIncome: 5500, employmentType: 'salaried',
+        orgStatus: 'approved',
+        orgNotes: 'Registered nurse at regional hospital. Steady income with overtime.',
+        dateSubmitted: new Date(Date.now() - 3 * DAY),
+        creditPersona: CREDIT.BAMBIKO, criminalPersona: CRIMINAL.CHUANG,
+        evictionPersona: EVICTION.RAY_CLEAN, flexidPersona: FLEXID.GOODLEY, demoCviScore: 42,
+      },
+      {
+        firstName: 'Carlos', lastName: 'Rivera', email: 'carlos.rivera@demo.commonground.co',
+        monthlyIncome: 4100, employmentType: 'salaried',
+        orgStatus: 'approved',
+        orgNotes: 'Physical therapy assistant. Consistent salaried income.',
+        dateSubmitted: new Date(Date.now() - 2 * DAY),
+        creditPersona: CREDIT.BARABAS, criminalPersona: CRIMINAL.BRANDIS,
+        evictionPersona: EVICTION.RAY_CLEAN, flexidPersona: FLEXID.GIDI, demoCviScore: 38,
+      },
+    ],
+  },
+
+  // ─── Apartment Unit 3A: Good, educators ─────────────────
+  {
+    name: 'Dunder Mifflin Plaza — Unit 3A',
+    buildingIdx: 2, unitIdx: 4,
+    estimatedMonthlyCost: 2600,
+    location: { city: 'Scranton', state: 'PA' },
+    expectedMemberCount: 3,
+    intakeLinkToken: 'demo-dunder-3a',
+    stage: 'in_progress',
+    members: [
+      {
+        firstName: 'Ingrid', lastName: 'Svensson', email: 'ingrid.svensson@demo.commonground.co',
+        monthlyIncome: 5000, employmentType: 'government',
+        orgStatus: 'approved',
+        orgNotes: 'High school science teacher. Stable government salary with pension.',
+        dateSubmitted: new Date(Date.now() - 4 * DAY),
+        creditPersona: CREDIT.BLACK, criminalPersona: CRIMINAL.CONSUMER,
+        evictionPersona: EVICTION.RAY_CLEAN, flexidPersona: FLEXID.COPE, demoCviScore: 41,
+      },
+      {
+        firstName: 'Omar', lastName: 'Farah', email: 'omar.farah@demo.commonground.co',
+        monthlyIncome: 4800, employmentType: 'government',
+        orgStatus: 'approved',
+        orgNotes: 'Community college adjunct professor. Government employment with benefits.',
+        dateSubmitted: new Date(Date.now() - 3 * DAY),
+        creditPersona: CREDIT.BAMBIKO, criminalPersona: CRIMINAL.BRANDIS,
+        evictionPersona: EVICTION.RAY_CLEAN, flexidPersona: FLEXID.JJUNIPER, demoCviScore: 40,
+      },
+      {
+        firstName: 'Sophie', lastName: 'Laurent', email: 'sophie.laurent@demo.commonground.co',
+        monthlyIncome: 3600, employmentType: 'salaried',
+        orgStatus: 'approved',
+        orgNotes: 'After-school program coordinator. Consistent salaried role.',
+        dateSubmitted: new Date(Date.now() - 2 * DAY),
+        creditPersona: CREDIT.BARABAS, criminalPersona: CRIMINAL.CHUANG,
+        evictionPersona: EVICTION.RAY_CLEAN, flexidPersona: FLEXID.GOODLEY, demoCviScore: 37,
+      },
+    ],
+  },
 
   // ─── House 4: Approved, clean retired + government ──────
   {
@@ -606,6 +708,9 @@ const REPORT_STATUS_BY_TOKEN = {
   'demo-schrute': 'generated',
   'demo-dunder-1a': 'released',
   'demo-dunder-1b': 'released',
+  'demo-dunder-2a': 'released',
+  'demo-dunder-2b': 'generated',
+  'demo-dunder-3a': 'generated',
   'demo-beasley': 'released',
 };
 
@@ -849,8 +954,6 @@ async function seed() {
       );
     }
   }
-
-  console.log(`\n--- Apartment Unit 2A left vacant (no deal) ---`);
 
   // ── Generate homepage insights ──────────────────────────────
   if (process.env.GEMINI_API_KEY) {

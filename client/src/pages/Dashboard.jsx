@@ -67,6 +67,10 @@ function countAttentionIssues(deal) {
   if (!deal) return { count: 0, reasons: [] };
   let count = 0;
   const reasons = [];
+  if (deal.stage === 'review') {
+    count += 1;
+    reasons.push('in review');
+  }
   if (deal.failedChecks > 0) {
     count += deal.failedChecks;
     reasons.push(`${deal.failedChecks} failed check${deal.failedChecks !== 1 ? 's' : ''}`);
@@ -595,7 +599,7 @@ export default function Dashboard() {
             <div>
               <h2 className="page-title">Properties</h2>
               <p className="page-subtitle">
-                {buildings.length} building{buildings.length !== 1 ? 's' : ''} &middot; {totalDeals} active deal{totalDeals !== 1 ? 's' : ''} &middot; {totalVacant} vacant
+                {buildings.length} building{buildings.length !== 1 ? 's' : ''} &middot; {totalDeals} active app{totalDeals !== 1 ? 's' : ''} &middot; {totalVacant} vacant
               </p>
             </div>
             <button className="btn btn-primary" onClick={() => setShowCreateBuilding(true)}>
