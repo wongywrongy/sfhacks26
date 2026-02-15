@@ -6,6 +6,9 @@ const {
   updateCustomModel,
   createReport,
   getReport,
+  getApplicantReports,
+  previewApplicantReport,
+  releaseReports,
 } = require('../controllers/analytics-controller');
 
 // Mounted at /api/projects/:projectId — mergeParams so we get projectId
@@ -18,5 +21,8 @@ router.get('/contributions', getContributions);
 router.put('/contributions/custom', updateCustomModel);
 router.post('/report', createReport);
 router.get('/report', getReport);
+router.get('/reports/applicants', getApplicantReports);
+router.get('/reports/applicants/:memberId/preview', previewApplicantReport);
+router.post('/reports/release', releaseReports);
 
 module.exports = router;

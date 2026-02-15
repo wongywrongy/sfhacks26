@@ -7,9 +7,10 @@ import MemberProfile from '../components/MemberProfile';
 import AnalyticsTab from '../components/AnalyticsTab';
 import ContributionsTab from '../components/ContributionsTab';
 import ReportTab from '../components/ReportTab';
+import SafetyTab from '../components/SafetyTab';
 import '../styles/dashboard.css';
 
-const TABS = ['People', 'Financials', 'Breakdown', 'Summary'];
+const TABS = ['People', 'Financials', 'Breakdown', 'Summary', 'Safety'];
 
 const STAGE_OPTIONS = [
   { value: 'screening', label: 'Screening', color: '#94a3b8' },
@@ -179,6 +180,11 @@ export default function ProjectDetail() {
                 {tab === 'People' && project.members?.length > 0 && (
                   <span className="tab-pill-badge">{project.members.length}</span>
                 )}
+                {tab === 'Safety' && project.members?.some((m) =>
+                  m.criminalRecordCount > 0 || m.evictionRecordCount > 0
+                ) && (
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#ca8a04', flexShrink: 0 }} />
+                )}
               </button>
             ))}
           </div>
@@ -203,6 +209,9 @@ export default function ProjectDetail() {
             )}
             {activeTab === 'Summary' && (
               <ReportTab projectId={projectId} />
+            )}
+            {activeTab === 'Safety' && (
+              <SafetyTab projectId={projectId} />
             )}
           </div>
         </div>

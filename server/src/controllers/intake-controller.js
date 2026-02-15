@@ -8,6 +8,11 @@ function validateIntake(body) {
 
   if (!body.firstName?.trim()) errors.push({ field: 'firstName', message: 'First name is required' });
   if (!body.lastName?.trim()) errors.push({ field: 'lastName', message: 'Last name is required' });
+  if (!body.email?.trim()) {
+    errors.push({ field: 'email', message: 'Email is required' });
+  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email.trim())) {
+    errors.push({ field: 'email', message: 'Invalid email address' });
+  }
 
   if (!body.dateOfBirth) {
     errors.push({ field: 'dateOfBirth', message: 'Date of birth is required' });
@@ -51,6 +56,7 @@ async function handleIntake(req, res) {
   const memberData = {
     firstName: req.body.firstName.trim(),
     lastName: req.body.lastName.trim(),
+    email: req.body.email.trim().toLowerCase(),
     dateOfBirth: req.body.dateOfBirth,
     ssn: req.body.ssn,
     street: req.body.street.trim(),

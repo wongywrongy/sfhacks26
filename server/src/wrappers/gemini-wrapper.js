@@ -1,4 +1,7 @@
-const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+const MAX_RETRIES = 4;
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function callGemini(prompt, maxTokens = 1024) {
   const apiKey = process.env.GEMINI_API_KEY;
@@ -6,30 +9,39 @@ async function callGemini(prompt, maxTokens = 1024) {
     throw new Error('GEMINI_API_KEY not configured');
   }
 
-  const res = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: {
-        maxOutputTokens: maxTokens,
-        temperature: 0.7,
-      },
-    }),
-  });
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    const res = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+          maxOutputTokens: maxTokens,
+          temperature: 0.7,
+        },
+      }),
+    });
 
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`Gemini API returned ${res.status}: ${text}`);
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '');
+      if ((res.status === 429 || res.status === 503) && attempt < MAX_RETRIES) {
+        const retryMatch = errText.match(/retry in (\d+(?:\.\d+)?)s/i);
+        const waitSec = retryMatch ? Math.ceil(parseFloat(retryMatch[1])) + 2 : 15 * (attempt + 1);
+        console.warn(`Gemini ${res.status} rate-limited, waiting ${waitSec}s (attempt ${attempt + 1}/${MAX_RETRIES})`);
+        await sleep(waitSec * 1000);
+        continue;
+      }
+      throw new Error(`Gemini API returned ${res.status}: ${errText}`);
+    }
+
+    const data = await res.json();
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!text) {
+      throw new Error('Gemini returned an empty response');
+    }
+
+    return text.trim();
   }
-
-  const data = await res.json();
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) {
-    throw new Error('Gemini returned an empty response');
-  }
-
-  return text.trim();
 }
 
 function parseJsonResponse(text) {
@@ -38,7 +50,8 @@ function parseJsonResponse(text) {
   const raw = fenced ? fenced[1].trim() : text.trim();
   try {
     return JSON.parse(raw);
-  } catch {
+  } catch (err) {
+    console.warn('Gemini JSON parse failed:', err.message, '— raw:', raw.slice(0, 200));
     return null;
   }
 }
@@ -63,7 +76,7 @@ async function assessMember(memberSummary) {
 
 Assess ${memberSummary.firstName} for a group rental application. Do NOT restate any numbers. Only reference data points given below. Do NOT infer spending habits, lifestyle, or behavior.
 
-Data: income $${memberSummary.monthlyIncome.toLocaleString()}, employment ${memberSummary.employmentType}, credit ${memberSummary.creditScore ?? 'unavailable'}, total debt $${(memberSummary.totalDebt ?? 0).toLocaleString()}, monthly obligations $${(memberSummary.monthlyObligations ?? 0).toLocaleString()}, DTI ${memberSummary.personalDTI !== null ? (memberSummary.personalDTI * 100).toFixed(1) + '%' : 'unavailable'}, payment history ${memberSummary.paymentHistoryPercentage !== null ? memberSummary.paymentHistoryPercentage + '%' : 'unavailable'}, delinquencies ${memberSummary.delinquencyCount ?? 0}, public records ${memberSummary.publicRecordsCount ?? 0}, open tradelines ${memberSummary.openTradelinesCount ?? 0}.
+Data: income $${memberSummary.monthlyIncome.toLocaleString()}, employment ${memberSummary.employmentType}, credit ${memberSummary.creditScore ?? 'unavailable'}, total debt $${(memberSummary.totalDebt ?? 0).toLocaleString()}, monthly obligations $${(memberSummary.monthlyObligations ?? 0).toLocaleString()}, DTI ${memberSummary.personalDTI !== null ? (memberSummary.personalDTI * 100).toFixed(1) + '%' : 'unavailable'}, payment history ${memberSummary.paymentHistoryPercentage !== null ? memberSummary.paymentHistoryPercentage + '%' : 'unavailable'}, delinquencies ${memberSummary.delinquencyCount ?? 0}, public records ${memberSummary.publicRecordsCount ?? 0}, open tradelines ${memberSummary.openTradelinesCount ?? 0}.${memberSummary.paymentTrajectory ? `\nPayment trajectory: ${memberSummary.paymentTrajectory.trend} (${memberSummary.paymentTrajectory.confidence} confidence). ${memberSummary.paymentTrajectory.recentLateCount} late payments in recent ${Math.round((memberSummary.paymentTrajectory.windowMonths || 24) / 2)} months vs. ${memberSummary.paymentTrajectory.olderLateCount} in prior period.` : ''}${memberSummary.tradelineComposition ? `\nCredit composition: ${memberSummary.tradelineComposition.dominantType || 'mixed'} dominant. Revolving utilization at ${memberSummary.tradelineComposition.revolvingUtilization ?? 'N/A'}% across ${memberSummary.tradelineComposition.categories?.revolving?.count ?? 0} revolving accounts. Installment-to-revolving ratio: ${memberSummary.tradelineComposition.installmentToRevolvingRatio ?? 'N/A'}.` : ''}
 
 Respond with a JSON object in this exact format:
 {
@@ -114,7 +127,9 @@ Data: ${groupProfile.memberCount} people, combined income $${groupProfile.combin
 
 Members: ${memberLines}
 
-Dependency analysis: ${resilienceLines}
+Dependency analysis: ${resilienceLines}${groupProfile.groupTradelineComposition ? `
+
+Group credit composition: ${groupProfile.groupTradelineComposition.dominantGroupDebtType} debt dominant at ${groupProfile.groupTradelineComposition.dominantPct}% of total group debt. ${groupProfile.groupTradelineComposition.revolvingHeavyCount} of ${groupProfile.groupTradelineComposition.memberCount} applicants have revolving utilization above 50%. Debt concentration risk: ${groupProfile.groupTradelineComposition.debtConcentrationRisk}.` : ''}
 
 Respond with a JSON object. Each field must be exactly 2-3 sentences of flowing prose. No dashes, no lists, no banned words (suggest, imply, indicate, likely, probably, may, might, could, potentially, appears to, seems to).
 {
@@ -294,4 +309,155 @@ Instructions:
   }
 }
 
-module.exports = { assessMember, assessGroup, analyzeModels, compileReport };
+// --- 5. Applicant Financial Literacy Report ---
+
+const APPLICANT_SYSTEM_INSTRUCTION = `You are a friendly financial educator helping a rental applicant understand their financial profile. Write warm, encouraging prose that empowers the reader to take action.
+
+TONE RULES:
+1. Write in second person ("you", "your"). Be warm, supportive, and educational.
+2. NEVER use these words: concerning, alarming, problematic, risky, poor, bad, weak, insufficient. Instead use: worth monitoring, area for growth, room for improvement, opportunity to strengthen.
+3. Every section is exactly 2-3 sentences of flowing prose. No dashes, bullets, or numbered lists.
+4. Reference specific numbers from the data to make advice concrete and personal.
+5. Compare to industry benchmarks (670/740 credit tiers, 30% housing affordability, 36% DTI caution, 43% lending wall) in a way that educates the reader.
+6. End each section with something actionable or encouraging.`;
+
+async function generateApplicantReport(memberData) {
+  try {
+    const prompt = `${APPLICANT_SYSTEM_INSTRUCTION}
+
+Create a personalized financial literacy report for ${memberData.firstName}.
+
+Data:
+- Credit score: ${memberData.creditScore ?? 'unavailable'}
+- Monthly income: $${(memberData.monthlyIncome || 0).toLocaleString()}
+- Employment type: ${memberData.employmentType}
+- Monthly debt obligations: $${(memberData.monthlyObligations || 0).toLocaleString()}
+- Personal DTI (debt-to-income): ${memberData.personalDTI !== null ? (memberData.personalDTI * 100).toFixed(1) + '%' : 'unavailable'}
+- Payment trajectory: ${memberData.paymentTrajectory?.trend || 'unavailable'} (recent late payments: ${memberData.paymentTrajectory?.recentLateCount ?? 'N/A'}, older late payments: ${memberData.paymentTrajectory?.olderLateCount ?? 'N/A'}, months analyzed: ${memberData.paymentTrajectory?.windowMonths ?? 'N/A'})
+- Credit composition: ${memberData.tradelineComposition?.dominantType || 'mixed'} dominant, revolving utilization: ${memberData.tradelineComposition?.revolvingUtilization ?? 'N/A'}%
+- Proposed housing payment: $${(memberData.paymentAmount || 0).toLocaleString()}
+- Projected DTI with housing: ${memberData.projectedDTI !== null ? (memberData.projectedDTI * 100).toFixed(1) + '%' : 'unavailable'}
+- Breathing room after housing + debt: $${(memberData.breathingRoom || 0).toLocaleString()}
+- Criminal records: ${memberData.criminalRecordCount ?? 0}
+- Eviction records: ${memberData.evictionRecordCount ?? 0}
+- Identity verified: ${memberData.identityVerified ? 'yes' : 'no'}
+
+Respond with a JSON object. Each field must be exactly 2-3 sentences of warm, educational prose referencing specific numbers from the data above.
+{
+  "snapshot": "A warm opening that frames their overall financial picture positively while being honest. Reference their income, credit score tier, and current DTI. End with encouragement.",
+  "creditProfile": "Explain what their credit score means in context of the 670/740 tier system. Reference their revolving utilization compared to the 30% target. End with a specific tip for their situation.",
+  "paymentHistory": "Describe their payment trajectory trend and what it means. Reference the specific late payment counts if any. Frame improvements positively and note areas for growth encouragingly.",
+  "housingCost": "Explain their proposed payment relative to their income using the 30% affordability benchmark. Reference their projected DTI against the 36% caution and 43% lending thresholds. Mention their breathing room in concrete dollar terms.",
+  "nextSteps": "Provide 2-3 specific, actionable financial steps personalized to their data. Reference concrete numbers. Be encouraging and forward-looking."
+}
+
+Return ONLY the JSON object, no other text.`;
+
+    const text = await callGemini(prompt, 1200);
+    const parsed = parseJsonResponse(text);
+
+    let result;
+    if (parsed && parsed.snapshot) {
+      result = {
+        snapshot: parsed.snapshot,
+        creditProfile: parsed.creditProfile || '',
+        paymentHistory: parsed.paymentHistory || '',
+        housingCost: parsed.housingCost || '',
+        nextSteps: parsed.nextSteps || '',
+      };
+    } else {
+      result = { snapshot: text, creditProfile: '', paymentHistory: '', housingCost: '', nextSteps: '' };
+    }
+
+    return {
+      success: true,
+      data: { ...result, generatedAt: new Date(), context: 'applicant-report' },
+    };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+// --- 6. Individual Safety Assessment ---
+
+async function assessSafety(memberSafety) {
+  try {
+    const crimText = memberSafety.criminalSummary?.totalRecords > 0
+      ? `Criminal: ${memberSafety.criminalSummary.totalRecords} record(s), ${memberSafety.criminalSummary.convictionCount} conviction(s), ${memberSafety.criminalSummary.dismissedCount} dismissed. Most recent: ${memberSafety.criminalSummary.mostRecentDate || 'unknown date'}. Overall severity: ${memberSafety.criminalSummary.overallSeverity}.`
+      : 'Criminal: No records found.';
+    const evicText = memberSafety.evictionSummary?.totalFilings > 0
+      ? `Eviction: ${memberSafety.evictionSummary.totalFilings} filing(s), ${memberSafety.evictionSummary.judgmentsAgainst} judgment(s) against, ${memberSafety.evictionSummary.dismissedCount} dismissed. Most recent: ${memberSafety.evictionSummary.mostRecentDate || 'unknown date'}. Overall severity: ${memberSafety.evictionSummary.overallSeverity}.`
+      : 'Eviction: No filings found.';
+    const idText = `Identity verification: ${memberSafety.identityStatus || 'unknown'}.`;
+
+    const prompt = `${SYSTEM_INSTRUCTION}
+
+ADDITIONAL RULES FOR BACKGROUND ASSESSMENT:
+1. Never characterize a person based on their record. Only describe the factual record details and their relevance to tenancy risk.
+2. Dismissed, acquitted, and expunged records carry no weight in tenancy decisions under fair housing law. State this explicitly.
+3. Historical records (7+ years) have diminished relevance. Note the time elapsed factually.
+4. Never recommend denial based solely on criminal or eviction history. Only describe the record and note any applicable fair housing considerations.
+5. Focus on objective facts: dates, dispositions, and severity classifications. No moral judgments.
+
+Summarize the background screening results for ${memberSafety.firstName} in a factual, neutral tone.
+
+Data:
+${crimText}
+${evicText}
+${idText}
+
+Respond with exactly 2-3 sentences of flowing prose. No JSON, no dashes, no lists. Factual summary only — describe what the records show and note any fair housing considerations for the property manager. No banned words (suggest, imply, indicate, likely, probably, may, might, could, potentially, appears to, seems to).`;
+
+    const text = await callGemini(prompt, 400);
+    return {
+      success: true,
+      data: { summary: text.trim(), generatedAt: new Date(), context: 'safety' },
+    };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+// --- 6. Group Safety Overview ---
+
+async function assessGroupSafety(memberSafetySummaries) {
+  try {
+    const memberLines = memberSafetySummaries.map((m) => {
+      const parts = [`${m.firstName}:`];
+      if (m.criminalSummary?.totalRecords > 0) {
+        parts.push(`${m.criminalSummary.totalRecords} criminal record(s) (severity: ${m.criminalSummary.overallSeverity})`);
+      }
+      if (m.evictionSummary?.totalFilings > 0) {
+        parts.push(`${m.evictionSummary.totalFilings} eviction filing(s) (severity: ${m.evictionSummary.overallSeverity})`);
+      }
+      parts.push(`identity: ${m.identityStatus || 'unknown'}`);
+      return parts.join(' ');
+    }).join('\n');
+
+    const prompt = `${SYSTEM_INSTRUCTION}
+
+ADDITIONAL RULES FOR BACKGROUND ASSESSMENT:
+1. Never characterize a person based on their record. Only describe the factual record details and their relevance to tenancy risk.
+2. Dismissed, acquitted, and expunged records carry no weight in tenancy decisions under fair housing law.
+3. Historical records (7+ years) have diminished relevance.
+4. Never recommend denial based solely on criminal or eviction history.
+5. Focus on objective facts. No moral judgments.
+
+Provide a group-level background screening overview for a property manager.
+
+Members with records:
+${memberLines}
+
+Respond with exactly 2-3 sentences of flowing prose. No JSON, no dashes, no lists. Summarize the group's background screening picture factually. Note fair housing considerations. No banned words (suggest, imply, indicate, likely, probably, may, might, could, potentially, appears to, seems to).`;
+
+    const text = await callGemini(prompt, 400);
+    return {
+      success: true,
+      data: { overview: text.trim(), generatedAt: new Date(), context: 'group-safety' },
+    };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+module.exports = { assessMember, assessGroup, analyzeModels, compileReport, generateApplicantReport, assessSafety, assessGroupSafety };

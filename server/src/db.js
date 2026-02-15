@@ -13,6 +13,16 @@ async function connect() {
   await client.connect();
   db = client.db();
   console.log('Connected to MongoDB');
+
+  // Ensure indexes (idempotent — safe to call on every startup)
+  const projects = db.collection('projects');
+  await Promise.all([
+    projects.createIndex({ orgId: 1 }),
+    projects.createIndex({ intakeLinkToken: 1 }, { unique: true }),
+    projects.createIndex({ 'applicantReports.reportToken': 1 }, { sparse: true }),
+    projects.createIndex({ buildingId: 1 }, { sparse: true }),
+  ]);
+
   return db;
 }
 

@@ -83,9 +83,11 @@ async function getBuildingsOverview(req, res) {
 
     return {
       _id: b._id,
+      name: b.name || null,
       address: b.address,
       city: b.city,
       state: b.state,
+      zip: b.zip || null,
       type: b.type,
       units,
       dateCreated: b.dateCreated,

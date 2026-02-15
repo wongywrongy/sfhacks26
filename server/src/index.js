@@ -6,6 +6,7 @@ const intakeRoutes = require('./routes/intake-routes');
 const projectRoutes = require('./routes/project-routes');
 const analyticsRoutes = require('./routes/analytics-routes');
 const buildingRoutes = require('./routes/building-routes');
+const reportRoutes = require('./routes/report-routes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -21,6 +22,7 @@ app.use('/api/intake', intakeRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/projects/:projectId', analyticsRoutes);
 app.use('/api/buildings', buildingRoutes);
+app.use('/api/reports', reportRoutes);
 
 async function start() {
   await connect();

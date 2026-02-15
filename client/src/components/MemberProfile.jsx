@@ -11,8 +11,10 @@ const ORG_STATUSES = [
 
 const fmt = (n) => '$' + Math.abs(Math.round(n)).toLocaleString();
 const scoreColor = (s) => s >= 740 ? 'var(--success)' : s >= 670 ? 'var(--warning)' : 'var(--error)';
-const cviLabel = (s) => s >= 80 ? 'Strong match' : s >= 50 ? 'Moderate' : 'Weak';
-const cviColor = (s) => s >= 80 ? 'var(--success)' : s >= 50 ? 'var(--warning)' : 'var(--error)';
+const cviLabel = (s) => s > 30 ? 'Verified' : s >= 15 ? 'Uncertain' : 'Failed';
+const cviColor = (s) => s > 30 ? 'var(--success)' : s >= 15 ? 'var(--warning)' : 'var(--error)';
+
+const COMP_COLORS = { revolving: '#3b82f6', installment: '#8b5cf6', mortgage: '#16a34a', other: '#94a3b8' };
 
 function MetricCard({ label, value, sub, valueColor }) {
   return (
@@ -47,6 +49,7 @@ export default function MemberProfile({ projectId, memberId, memberIndex = 0, on
   const [notes, setNotes] = useState('');
   const [fetchError, setFetchError] = useState('');
   const [showTradelines, setShowTradelines] = useState(false);
+  const [showDelinquencies, setShowDelinquencies] = useState(false);
 
   const color = MEMBER_COLORS[memberIndex % MEMBER_COLORS.length];
 
@@ -90,14 +93,16 @@ export default function MemberProfile({ projectId, memberId, memberIndex = 0, on
   const aiText = member?.aiAssessment?.full || member?.aiAssessment?.text;
   const creditComplete = member?.credit?.status === 'complete';
 
+  // Delinquent tradelines for expandable detail
+  const delinquentTradelines = tradelines.filter(
+    (t) => (t.latePayments?._30 > 0 || t.latePayments?._60 > 0 || t.latePayments?._90 > 0)
+  );
+
   return (
     <>
-      {/* Backdrop */}
       <div className="overlay-backdrop" onClick={onClose} />
 
-      {/* Panel */}
       <div className="overlay-panel">
-        {/* Color accent */}
         <div style={{ height: 3, background: color, flexShrink: 0, borderRadius: '16px 16px 0 0' }} />
 
         {/* Sticky header */}
@@ -138,8 +143,8 @@ export default function MemberProfile({ projectId, memberId, memberIndex = 0, on
               <div className="overlay-metrics-row">
                 <MetricCard
                   label="Credit Score"
-                  value={creditComplete ? member.credit.score : '—'}
-                  valueColor={creditComplete ? scoreColor(member.credit.score) : undefined}
+                  value={creditComplete ? member.credit.score ?? '—' : '—'}
+                  valueColor={creditComplete && member.credit.score ? scoreColor(member.credit.score) : undefined}
                   sub={creditComplete ? `${member.credit.paymentHistoryPercentage ?? '—'}% on-time` : undefined}
                 />
                 <MetricCard
@@ -172,12 +177,59 @@ export default function MemberProfile({ projectId, memberId, memberIndex = 0, on
                   {creditComplete ? (
                     <div className="overlay-section">
                       <div className="overlay-section-title">Credit Report</div>
-                      <div className="overlay-kv-grid">
-                        <div className="overlay-kv"><span>Payment History</span><span>{member.credit.paymentHistoryPercentage ?? 'N/A'}%</span></div>
-                        <div className="overlay-kv"><span>Delinquencies</span><span style={member.credit.delinquencyCount > 0 ? { color: 'var(--error)', fontWeight: 700 } : undefined}>{member.credit.delinquencyCount}</span></div>
-                        <div className="overlay-kv"><span>Open Tradelines</span><span>{member.credit.openTradelinesCount}</span></div>
-                        <div className="overlay-kv"><span>Public Records</span><span style={member.credit.publicRecordsCount > 0 ? { color: 'var(--error)', fontWeight: 700 } : undefined}>{member.credit.publicRecordsCount}</span></div>
-                        <div className="overlay-kv"><span>Disposable Income</span><span>{member.disposableIncome != null ? fmt(member.disposableIncome) : 'N/A'}</span></div>
+                      <div className="overlay-kv-list">
+                        <div className="overlay-kv-row">
+                          <span>Payment History</span>
+                          <span className="overlay-kv-val">{member.credit.paymentHistoryPercentage ?? 'N/A'}%</span>
+                        </div>
+                        <div className="overlay-kv-row">
+                          <span>Open Tradelines</span>
+                          <span className="overlay-kv-val">{member.credit.openTradelinesCount}</span>
+                        </div>
+                        <div className="overlay-kv-row">
+                          <span>Disposable Income</span>
+                          <span className="overlay-kv-val">{member.disposableIncome != null ? fmt(member.disposableIncome) : 'N/A'}</span>
+                        </div>
+                        <div className="overlay-kv-row">
+                          <span>Delinquencies</span>
+                          <span>
+                            {member.credit.delinquencyCount > 0 ? (
+                              <button
+                                className="overlay-delinq-badge"
+                                onClick={() => setShowDelinquencies(!showDelinquencies)}
+                              >
+                                {member.credit.delinquencyCount} delinquenc{member.credit.delinquencyCount > 1 ? 'ies' : 'y'}
+                                <span style={{ fontSize: 8, marginLeft: 3 }}>{showDelinquencies ? '▲' : '▼'}</span>
+                              </button>
+                            ) : (
+                              <span className="overlay-kv-val">0</span>
+                            )}
+                          </span>
+                        </div>
+
+                        {/* Expandable delinquency detail */}
+                        {showDelinquencies && delinquentTradelines.length > 0 && (
+                          <div className="overlay-delinq-detail">
+                            {delinquentTradelines.map((t, i) => (
+                              <div key={i} className="overlay-delinq-item">
+                                <span className="overlay-delinq-creditor">{t.creditor || 'Unknown'}</span>
+                                <div className="overlay-delinq-badges">
+                                  {t.latePayments?._30 > 0 && <span className="delinq-sev delinq-30">{t.latePayments._30}x 30-day</span>}
+                                  {t.latePayments?._60 > 0 && <span className="delinq-sev delinq-60">{t.latePayments._60}x 60-day</span>}
+                                  {t.latePayments?._90 > 0 && <span className="delinq-sev delinq-90">{t.latePayments._90}x 90-day</span>}
+                                </div>
+                                {t.dateOpened && <span className="overlay-delinq-date">opened {new Date(t.dateOpened).toLocaleDateString()}</span>}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        <div className="overlay-kv-row">
+                          <span>Public Records</span>
+                          <span className={member.credit.publicRecordsCount > 0 ? 'overlay-kv-val-alert' : 'overlay-kv-val'}>
+                            {member.credit.publicRecordsCount}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   ) : (
@@ -188,6 +240,71 @@ export default function MemberProfile({ projectId, memberId, memberIndex = 0, on
                       </div>
                     </div>
                   )}
+
+                  {/* Payment Trajectory */}
+                  {creditComplete && member.paymentTrajectory && (
+                    <div className="overlay-trajectory">
+                      <span className="overlay-trajectory-trend" style={{
+                        color: member.paymentTrajectory.trend === 'improving' ? 'var(--success)'
+                          : member.paymentTrajectory.trend === 'declining' ? 'var(--error)' : 'var(--text-secondary)'
+                      }}>
+                        {member.paymentTrajectory.trend === 'improving' ? '▲' : member.paymentTrajectory.trend === 'declining' ? '▼' : '—'}{' '}
+                        {member.paymentTrajectory.trend}
+                      </span>
+                      <span className="overlay-trajectory-detail">
+                        {member.paymentTrajectory.recentLateCount} late in past {Math.round((member.paymentTrajectory.windowMonths || 24) / 2)}mo vs {member.paymentTrajectory.olderLateCount} prior
+                        <span style={{ opacity: 0.5 }}> · {member.paymentTrajectory.windowMonths || 24}mo window · {member.paymentTrajectory.confidence} confidence</span>
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Credit Composition */}
+                  {creditComplete && member.tradelineComposition && (() => {
+                    const cats = member.tradelineComposition.categories || {};
+                    const total = Object.values(cats).reduce((s, c) => s + (c.totalBalance || 0), 0);
+                    if (total === 0) return null;
+                    return (
+                      <div className="overlay-section overlay-composition">
+                        <div className="overlay-section-title">Credit Composition</div>
+
+                        {/* Stacked bar */}
+                        <div className="overlay-comp-bar">
+                          {Object.entries(cats).filter(([, c]) => c.totalBalance > 0).map(([cat, c]) => (
+                            <div key={cat} style={{ width: `${(c.totalBalance / total) * 100}%`, background: COMP_COLORS[cat], minWidth: 2 }} title={`${cat}: ${fmt(c.totalBalance)}`} />
+                          ))}
+                        </div>
+
+                        {/* Category legend with structured data */}
+                        <div className="overlay-comp-legend">
+                          {Object.entries(cats).filter(([, c]) => c.count > 0).map(([cat, c]) => (
+                            <div key={cat} className="overlay-comp-cat">
+                              <span className="overlay-comp-dot" style={{ background: COMP_COLORS[cat] }} />
+                              <span className="overlay-comp-cat-name">{cat}</span>
+                              <span className="overlay-comp-cat-detail">{c.count} acct{c.count !== 1 ? 's' : ''} · {fmt(c.totalBalance)}</span>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Revolving utilization highlight */}
+                        {member.tradelineComposition.revolvingUtilization != null && (
+                          <div className="overlay-rev-util-card" style={{
+                            borderColor: member.tradelineComposition.revolvingUtilization > 50 ? 'rgba(220,38,38,0.2)' : 'rgba(255,255,255,0.6)',
+                            background: member.tradelineComposition.revolvingUtilization > 50 ? 'rgba(254,242,242,0.6)' : 'rgba(248,250,252,0.6)',
+                          }}>
+                            <span className="overlay-rev-util-label">Revolving Utilization</span>
+                            <span className="overlay-rev-util-value" style={{
+                              color: member.tradelineComposition.revolvingUtilization > 50 ? 'var(--error)' : 'var(--text-primary)',
+                            }}>
+                              {member.tradelineComposition.revolvingUtilization}%
+                            </span>
+                            {member.tradelineComposition.installmentToRevolvingRatio != null && (
+                              <span className="overlay-rev-util-sub">Inst/Rev ratio: {member.tradelineComposition.installmentToRevolvingRatio}</span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
 
                   {tradelines.length > 0 && (
                     <div className="overlay-section">
@@ -221,62 +338,84 @@ export default function MemberProfile({ projectId, memberId, memberIndex = 0, on
                   <div className="overlay-section">
                     <div className="overlay-section-title">Background Screening</div>
                     <div className="overlay-bg-checks">
-                      <div className="overlay-bg-row">
-                        <span>Criminal Records</span>
-                        {member.criminal?.status === 'complete' ? (
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                            {(member.criminal.records || []).length === 0 ? (
-                              <>
+                      {/* Criminal */}
+                      <div className="overlay-bg-card">
+                        <div className="overlay-bg-card-row">
+                          <span className="overlay-bg-card-label">Criminal Records</span>
+                          {member.criminal?.status === 'complete' ? (
+                            (member.criminal.records || []).length === 0 ? (
+                              <span className="overlay-bg-clear">
                                 <svg width="14" height="14" viewBox="0 0 16 16"><circle cx="8" cy="8" r="8" fill="#16a34a" opacity="0.12" /><path d="M5 8l2 2 4-4" fill="none" stroke="#16a34a" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                                <span style={{ fontWeight: 700, color: 'var(--success)' }}>Clear</span>
-                              </>
+                                Clear
+                              </span>
                             ) : (
-                              <>
+                              <span className="overlay-bg-alert">
                                 <svg width="14" height="14" viewBox="0 0 16 16"><circle cx="8" cy="8" r="8" fill="#dc2626" opacity="0.12" /><path d="M5.5 5.5l5 5M10.5 5.5l-5 5" fill="none" stroke="#dc2626" strokeWidth="1.8" strokeLinecap="round" /></svg>
-                                <span style={{ fontWeight: 700, color: 'var(--error)' }}>{(member.criminal.records || []).length} found</span>
-                              </>
-                            )}
-                          </span>
-                        ) : (
-                          <span style={{ fontWeight: 700, color: 'var(--text-muted)' }}>{member.criminal?.status === 'failed' ? 'Failed' : 'Pending'}</span>
-                        )}
+                                {(member.criminal.records || []).length} found
+                              </span>
+                            )
+                          ) : (
+                            <span className="overlay-bg-pending-text">{member.criminal?.status === 'failed' ? 'Failed' : 'Pending'}</span>
+                          )}
+                        </div>
                       </div>
-                      <div className="overlay-bg-row">
-                        <span>Eviction Records</span>
-                        {member.eviction?.status === 'complete' ? (
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                            {(member.eviction.records || []).length === 0 ? (
-                              <>
+
+                      {/* Eviction */}
+                      <div className="overlay-bg-card">
+                        <div className="overlay-bg-card-row">
+                          <span className="overlay-bg-card-label">Eviction Records</span>
+                          {member.eviction?.status === 'complete' ? (
+                            (member.eviction.records || []).length === 0 ? (
+                              <span className="overlay-bg-clear">
                                 <svg width="14" height="14" viewBox="0 0 16 16"><circle cx="8" cy="8" r="8" fill="#16a34a" opacity="0.12" /><path d="M5 8l2 2 4-4" fill="none" stroke="#16a34a" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                                <span style={{ fontWeight: 700, color: 'var(--success)' }}>Clear</span>
-                              </>
+                                Clear
+                              </span>
                             ) : (
-                              <>
+                              <span className="overlay-bg-alert">
                                 <svg width="14" height="14" viewBox="0 0 16 16"><circle cx="8" cy="8" r="8" fill="#dc2626" opacity="0.12" /><path d="M5.5 5.5l5 5M10.5 5.5l-5 5" fill="none" stroke="#dc2626" strokeWidth="1.8" strokeLinecap="round" /></svg>
-                                <span style={{ fontWeight: 700, color: 'var(--error)' }}>{(member.eviction.records || []).length} found</span>
-                              </>
-                            )}
-                          </span>
-                        ) : (
-                          <span style={{ fontWeight: 700, color: 'var(--text-muted)' }}>{member.eviction?.status === 'failed' ? 'Failed' : 'Pending'}</span>
-                        )}
+                                {(member.eviction.records || []).length} found
+                              </span>
+                            )
+                          ) : (
+                            <span className="overlay-bg-pending-text">{member.eviction?.status === 'failed' ? 'Failed' : 'Pending'}</span>
+                          )}
+                        </div>
                       </div>
-                      <div className="overlay-bg-row">
-                        <span>Identity CVI</span>
-                        <span style={{ fontWeight: 700, color: cviScore != null ? cviColor(cviScore) : 'var(--text-muted)' }}>
-                          {cviScore != null ? `${cviScore}/100` : member.identity?.status === 'failed' ? 'Failed' : 'Pending'}
-                        </span>
+
+                      {/* Identity CVI */}
+                      <div className="overlay-bg-card overlay-cvi-card">
+                        <div className="overlay-bg-card-row">
+                          <span className="overlay-bg-card-label">Identity Verification</span>
+                          {cviScore != null ? (
+                            <span className="overlay-cvi-inline" style={{ color: cviColor(cviScore) }}>
+                              {cviLabel(cviScore)}
+                            </span>
+                          ) : (
+                            <span className="overlay-bg-pending-text">{member.identity?.status === 'failed' ? 'Failed' : 'Pending'}</span>
+                          )}
+                        </div>
+                        {cviScore != null && (
+                          <div className="overlay-cvi-detail">
+                            <span className="overlay-cvi-big" style={{ color: cviColor(cviScore) }}>{cviScore}</span>
+                            <span className="overlay-cvi-max">/100</span>
+                            <div className="overlay-cvi-bar">
+                              <div className="overlay-cvi-bar-fill" style={{ width: `${cviScore}%`, background: cviColor(cviScore) }} />
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                     {hasFailedChecks && (
-                      <button className="btn btn-secondary btn-sm" onClick={handleRetryChecks} disabled={retrying} style={{ marginTop: 8 }}>
+                      <button className="btn btn-secondary btn-sm" onClick={handleRetryChecks} disabled={retrying} style={{ marginTop: 10 }}>
                         {retrying ? 'Retrying...' : 'Retry Failed Checks'}
                       </button>
                     )}
                     {hasPendingChecks && (
-                      <button className="btn btn-secondary btn-sm" onClick={fetchMember} style={{ marginTop: 8 }}>Refresh Status</button>
+                      <button className="btn btn-secondary btn-sm" onClick={fetchMember} style={{ marginTop: 10 }}>Refresh Status</button>
                     )}
                   </div>
+
+                  <div className="overlay-divider" />
 
                   <div className="overlay-section">
                     <div className="overlay-section-title">Status</div>
@@ -296,6 +435,8 @@ export default function MemberProfile({ projectId, memberId, memberIndex = 0, on
                     </div>
                   </div>
 
+                  <div className="overlay-divider" />
+
                   <div className="overlay-section">
                     <div className="overlay-section-title">Notes</div>
                     <textarea
@@ -303,22 +444,26 @@ export default function MemberProfile({ projectId, memberId, memberIndex = 0, on
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}
                       placeholder="Internal notes about this applicant..."
-                      rows={3}
+                      rows={5}
                     />
                     <button
                       className="btn btn-secondary btn-sm"
                       onClick={() => handleStatusChange(member.orgStatus)}
                       disabled={updating}
-                      style={{ marginTop: 4 }}
+                      style={{ marginTop: 6 }}
                     >{updating ? 'Saving...' : 'Save Notes'}</button>
                   </div>
                 </div>
               </div>
 
               {/* AI Assessment */}
-              {aiText && <AiCallout label="Assessment">{aiText}</AiCallout>}
+              {aiText && (
+                <div style={{ marginTop: 8 }}>
+                  <AiCallout label="Assessment">{aiText}</AiCallout>
+                </div>
+              )}
               {!aiText && creditComplete && (
-                <div style={{ fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic' }}>AI assessment temporarily unavailable</div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic', marginTop: 8 }}>AI assessment temporarily unavailable</div>
               )}
             </>
           )}

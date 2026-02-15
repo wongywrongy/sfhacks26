@@ -95,7 +95,28 @@ async function computeGroupAnalytics(projectId, interestRate) {
   return analytics;
 }
 
+// Debounce: one pending reassessment per project, no concurrent duplicates
+const _reassessRunning = new Map(); // projectId → Promise
+const _reassessQueued = new Set();  // projectIds waiting for another run
+
 async function reassessGroup(projectId) {
+  if (_reassessRunning.has(projectId)) {
+    _reassessQueued.add(projectId);
+    return;
+  }
+
+  const run = _reassessGroupInner(projectId).finally(() => {
+    _reassessRunning.delete(projectId);
+    if (_reassessQueued.has(projectId)) {
+      _reassessQueued.delete(projectId);
+      reassessGroup(projectId).catch(() => {});
+    }
+  });
+  _reassessRunning.set(projectId, run);
+  return run;
+}
+
+async function _reassessGroupInner(projectId) {
   try {
     const project = await repo.getProjectById(projectId);
     if (!project) return;
@@ -129,6 +150,75 @@ async function reassessGroup(projectId) {
     const groupResult = await gemini.assessGroup(groupProfile);
     if (groupResult.success) {
       await repo.updateProject(projectId, { groupAssessment: groupResult.data });
+    }
+
+    // Group tradeline composition — aggregate individual compositions from approved members
+    const membersWithComposition = members.filter((m) => m.tradelineComposition);
+    if (membersWithComposition.length > 0) {
+      const aggregated = { revolving: { count: 0, totalBalance: 0 }, installment: { count: 0, totalBalance: 0 }, mortgage: { count: 0, totalBalance: 0 }, other: { count: 0, totalBalance: 0 } };
+      let totalGroupBalance = 0;
+      let revolvingHeavyCount = 0;
+
+      for (const m of membersWithComposition) {
+        const cats = m.tradelineComposition.categories || {};
+        for (const [cat, data] of Object.entries(cats)) {
+          if (aggregated[cat]) {
+            aggregated[cat].count += data.count || 0;
+            aggregated[cat].totalBalance += data.totalBalance || 0;
+          }
+          totalGroupBalance += data.totalBalance || 0;
+        }
+        // Count members with revolving utilization > 50%
+        if (m.tradelineComposition.revolvingUtilization > 50) {
+          revolvingHeavyCount++;
+        }
+      }
+
+      // Determine dominant group debt type
+      const sorted = Object.entries(aggregated).sort((a, b) => b[1].totalBalance - a[1].totalBalance);
+      const dominantGroupDebtType = sorted[0]?.[0] || null;
+      const dominantPct = totalGroupBalance > 0 ? Math.round((sorted[0]?.[1]?.totalBalance / totalGroupBalance) * 100) : 0;
+
+      // Debt concentration risk
+      let debtConcentrationRisk;
+      const revHeavyPct = membersWithComposition.length > 0 ? (revolvingHeavyCount / membersWithComposition.length) * 100 : 0;
+      if (dominantPct > 70 || revHeavyPct >= 75) {
+        debtConcentrationRisk = 'high';
+      } else if (dominantPct > 50 || revHeavyPct >= 50) {
+        debtConcentrationRisk = 'moderate';
+      } else {
+        debtConcentrationRisk = 'low';
+      }
+
+      const groupTradelineComposition = {
+        aggregateByType: aggregated,
+        totalGroupBalance,
+        dominantGroupDebtType,
+        dominantPct,
+        debtConcentrationRisk,
+        revolvingHeavyCount,
+        memberCount: membersWithComposition.length,
+        computedAt: new Date(),
+      };
+
+      await repo.updateProject(projectId, { groupTradelineComposition });
+    }
+
+    // Group safety assessment — if any member has criminal/eviction records
+    const membersWithRecords = members.filter((m) =>
+      (m.criminalStructured?.summary?.totalRecords > 0) || (m.evictionStructured?.summary?.totalFilings > 0)
+    );
+    if (membersWithRecords.length > 0) {
+      const memberSafetySummaries = membersWithRecords.map((m) => ({
+        firstName: m.firstName,
+        criminalSummary: m.criminalStructured?.summary || null,
+        evictionSummary: m.evictionStructured?.summary || null,
+        identityStatus: m.identityStructured?.verificationStatus || null,
+      }));
+      const safetyOverviewResult = await gemini.assessGroupSafety(memberSafetySummaries);
+      if (safetyOverviewResult.success) {
+        await repo.updateProject(projectId, { aiSafetyOverview: safetyOverviewResult.data });
+      }
     }
 
     // Model analysis via Gemini

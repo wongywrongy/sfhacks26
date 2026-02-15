@@ -1,0 +1,340 @@
+/* =====================================================
+   Applicant Report — matches dashboard glass morphism
+   ===================================================== */
+
+.applicant-report {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f8fafc 0%, #dbeafe 45%, #bfdbfe 100%);
+  background-attachment: fixed;
+  font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+  color: #18181b;
+  padding: 2rem 1rem;
+}
+
+.applicant-report .ar-container {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+/* Header */
+.applicant-report .ar-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.applicant-report .ar-brand {
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #2563eb;
+  margin-bottom: 0.5rem;
+}
+
+.applicant-report .ar-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #18181b;
+  margin: 0.25rem 0;
+}
+
+.applicant-report .ar-subtitle {
+  font-size: 1rem;
+  color: #52525b;
+  margin: 0.25rem 0;
+}
+
+.applicant-report .ar-date {
+  font-size: 0.825rem;
+  color: #71717a;
+  margin-top: 0.5rem;
+}
+
+/* Card — glass morphism */
+.applicant-report .ar-card {
+  background: rgba(255, 255, 255, 0.38);
+  backdrop-filter: blur(48px) saturate(1.8);
+  -webkit-backdrop-filter: blur(48px) saturate(1.8);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 16px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 8px 32px rgba(37, 99, 235, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.applicant-report .ar-card-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #18181b;
+  margin: 0 0 1rem 0;
+}
+
+.applicant-report .ar-card-accent {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  border: 1px solid rgba(37, 99, 235, 0.3);
+  color: #fff;
+}
+
+.applicant-report .ar-card-accent .ar-card-title {
+  color: #fff;
+}
+
+.applicant-report .ar-card-accent .ar-narrative {
+  color: rgba(255, 255, 255, 0.92);
+}
+
+/* Metric grid */
+.applicant-report .ar-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.applicant-report .ar-metric {
+  text-align: center;
+  padding: 0.75rem 0.5rem;
+  background: rgba(37, 99, 235, 0.05);
+  border: 1px solid rgba(37, 99, 235, 0.08);
+  border-radius: 12px;
+}
+
+.applicant-report .ar-metric-value {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #2563eb;
+}
+
+.applicant-report .ar-metric-label {
+  font-size: 0.7rem;
+  color: #52525b;
+  margin-top: 0.2rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.applicant-report .ar-metric-sub {
+  font-size: 0.65rem;
+  color: #71717a;
+  margin-top: 0.1rem;
+}
+
+/* Narrative */
+.applicant-report .ar-narrative {
+  font-size: 0.925rem;
+  line-height: 1.65;
+  color: #3f3f46;
+}
+
+/* Credit scale bar */
+.applicant-report .ar-scale-bar {
+  position: relative;
+  height: 12px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #ef4444 0%, #f59e0b 30%, #eab308 50%, #22c55e 75%, #16a34a 100%);
+  margin: 1rem 0 0.5rem;
+}
+
+.applicant-report .ar-scale-indicator {
+  position: absolute;
+  top: -6px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #18181b;
+  border: 3px solid #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  transform: translateX(-50%);
+}
+
+.applicant-report .ar-scale-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  color: #71717a;
+}
+
+/* Composition bar */
+.applicant-report .ar-composition-bar {
+  display: flex;
+  height: 10px;
+  border-radius: 5px;
+  overflow: hidden;
+  margin: 0.75rem 0;
+}
+
+.applicant-report .ar-composition-bar > div {
+  height: 100%;
+}
+
+/* Allocation bar */
+.applicant-report .ar-allocation-bar {
+  display: flex;
+  height: 28px;
+  border-radius: 8px;
+  overflow: hidden;
+  margin: 0.75rem 0;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.applicant-report .ar-allocation-bar > div {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  white-space: nowrap;
+  padding: 0 6px;
+}
+
+/* Status cards */
+.applicant-report .ar-status-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+}
+
+.applicant-report .ar-status-card {
+  text-align: center;
+  padding: 1rem 0.75rem;
+  background: rgba(37, 99, 235, 0.04);
+  border: 1px solid rgba(37, 99, 235, 0.08);
+  border-radius: 12px;
+}
+
+.applicant-report .ar-status-icon {
+  font-size: 1.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.applicant-report .ar-status-label {
+  font-size: 0.75rem;
+  color: #52525b;
+  margin-top: 0.15rem;
+}
+
+.applicant-report .ar-status-value {
+  font-size: 0.925rem;
+  font-weight: 600;
+  color: #18181b;
+}
+
+/* Footer */
+.applicant-report .ar-footer {
+  text-align: center;
+  padding: 2rem 0 1rem;
+  font-size: 0.8rem;
+  color: #71717a;
+  line-height: 1.6;
+}
+
+.applicant-report .ar-footer-brand {
+  font-weight: 700;
+  color: #2563eb;
+  font-size: 0.85rem;
+}
+
+/* Util target line */
+.applicant-report .ar-util-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0.5rem 0;
+}
+
+.applicant-report .ar-util-bar-track {
+  flex: 1;
+  height: 8px;
+  border-radius: 4px;
+  background: rgba(37, 99, 235, 0.1);
+  position: relative;
+}
+
+.applicant-report .ar-util-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  background: #2563eb;
+}
+
+.applicant-report .ar-util-bar-target {
+  position: absolute;
+  top: -4px;
+  width: 2px;
+  height: 16px;
+  background: #ef4444;
+  left: 30%;
+}
+
+.applicant-report .ar-util-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #18181b;
+  min-width: 40px;
+  text-align: right;
+}
+
+/* Loading state */
+.applicant-report .ar-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  gap: 1rem;
+}
+
+.applicant-report .ar-loading-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid rgba(37, 99, 235, 0.15);
+  border-top-color: #2563eb;
+  border-radius: 50%;
+  animation: ar-spin 0.8s linear infinite;
+}
+
+@keyframes ar-spin {
+  to { transform: rotate(360deg); }
+}
+
+.applicant-report .ar-error {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: #b91c1c;
+}
+
+/* Badge styles used in ReportTab */
+.badge-gray {
+  background: rgba(113, 113, 122, 0.12);
+  color: #52525b;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.badge-blue {
+  background: rgba(37, 99, 235, 0.1);
+  color: #2563eb;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.badge-green {
+  background: rgba(22, 163, 74, 0.1);
+  color: #16a34a;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.badge-red {
+  background: rgba(220, 38, 38, 0.1);
+  color: #dc2626;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}

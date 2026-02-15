@@ -25,7 +25,6 @@ async function createProject(projectData) {
     status: ProjectStatus.INTAKE,
     members: [],
     groupMetrics: null,
-    contributionModels: null,
     readinessReport: null,
     dateCreated: new Date(),
     dateUpdated: new Date(),
@@ -59,6 +58,7 @@ async function createMember(projectId, memberData) {
     _id: new ObjectId(),
     firstName: memberData.firstName,
     lastName: memberData.lastName,
+    email: memberData.email || null,
     dateOfBirth: memberData.dateOfBirth,
     ssn: memberData.ssn,
     street: memberData.street,
@@ -130,6 +130,23 @@ async function updateMemberField(projectId, memberId, field, value) {
   );
 }
 
+async function getProjectByReportToken(token) {
+  return col().findOne({ 'applicantReports.reportToken': token });
+}
+
+async function updateApplicantReportStatus(projectId, token, fields) {
+  const setFields = {};
+  for (const [key, value] of Object.entries(fields)) {
+    setFields[`applicantReports.$.${key}`] = value;
+  }
+  setFields.dateUpdated = new Date();
+
+  await col().updateOne(
+    { _id: new ObjectId(projectId), 'applicantReports.reportToken': token },
+    { $set: setFields }
+  );
+}
+
 module.exports = {
   createProject,
   getProjectById,
@@ -140,4 +157,6 @@ module.exports = {
   updateMemberCrsResults,
   updateMemberStatus,
   updateMemberField,
+  getProjectByReportToken,
+  updateApplicantReportStatus,
 };

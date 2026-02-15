@@ -59,6 +59,9 @@ export const api = {
   updateStage: (projectId, stage) =>
     request(`/projects/${projectId}/stage`, { method: 'PUT', body: JSON.stringify({ stage }) }),
 
+  // Safety
+  getSafety: (projectId) => request(`/projects/${projectId}/safety`),
+
   // Analytics
   getAnalytics: (projectId) => request(`/projects/${projectId}/analytics`),
 
@@ -80,4 +83,25 @@ export const api = {
       body: JSON.stringify({ selectedModelName }),
     }),
   getReport: (projectId) => request(`/projects/${projectId}/report`),
+
+  // Applicant Reports
+  getApplicantReports: (projectId) =>
+    request(`/projects/${projectId}/reports/applicants`),
+  previewReport: (projectId, memberId) =>
+    request(`/projects/${projectId}/reports/applicants/${memberId}/preview`),
+  releaseReports: (projectId, memberIds) =>
+    request(`/projects/${projectId}/reports/release`, {
+      method: 'POST',
+      body: JSON.stringify({ memberIds }),
+    }),
+  releaseAllReports: (projectId) =>
+    request(`/projects/${projectId}/reports/release`, {
+      method: 'POST',
+      body: JSON.stringify({ all: true }),
+    }),
+  getPublicReport: (reportToken) =>
+    fetch(`/api/reports/${reportToken}`).then((r) => {
+      if (!r.ok) throw new Error('Not found');
+      return r.json();
+    }),
 };

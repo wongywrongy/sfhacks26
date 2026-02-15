@@ -29,7 +29,7 @@ const STAGE_CONFIG = {
 
 // ── Sub-components ───────────────────────────────────────────
 
-function StagePill({ stage }) {
+function StagePill({ stage, count }) {
   if (!stage) {
     return (
       <span className="stage-pill" style={{ background: 'rgba(0,0,0,0.04)', color: 'var(--text-muted)' }}>
@@ -42,7 +42,7 @@ function StagePill({ stage }) {
   return (
     <span className="stage-pill" style={{ background: `${cfg.color}18`, color: cfg.color }}>
       <span className="stage-pill-dot" style={{ background: cfg.color }} />
-      {cfg.label}
+      {cfg.label}{count ? ` ×${count}` : ''}
     </span>
   );
 }
@@ -71,12 +71,13 @@ function needsAttention(deal) {
 
 function PortfolioStats({ buildings, unlinkedDeals }) {
   const stats = useMemo(() => {
-    let revenue = 0, applicants = 0, dtiSum = 0, dtiCount = 0, vacant = 0, attention = 0;
+    let revenue = 0, totalApplicants = 0, screenedApplicants = 0, dtiSum = 0, dtiCount = 0, vacant = 0, attention = 0;
     for (const b of buildings) {
       for (const u of b.units) {
         if (u.deal) {
           revenue += u.monthlyCost || 0;
-          applicants += u.deal.totalMembers || 0;
+          totalApplicants += u.deal.totalMembers || 0;
+          screenedApplicants += u.deal.screeningDone || 0;
           if (u.deal.groupDTI != null) { dtiSum += u.deal.groupDTI; dtiCount++; }
           if (needsAttention(u.deal)) attention++;
         } else {
@@ -84,18 +85,19 @@ function PortfolioStats({ buildings, unlinkedDeals }) {
         }
       }
     }
-    // Include unlinked deals in aggregation
     for (const d of unlinkedDeals) {
-      applicants += d.totalMembers || 0;
+      totalApplicants += d.totalMembers || 0;
+      screenedApplicants += d.screeningDone || 0;
       if (d.groupDTI != null) { dtiSum += d.groupDTI; dtiCount++; }
       if (needsAttention(d)) attention++;
     }
     const avgDTI = dtiCount > 0 ? dtiSum / dtiCount : null;
-    return { revenue, applicants, avgDTI, vacant, attention };
+    return { revenue, totalApplicants, screenedApplicants, avgDTI, vacant, attention };
   }, [buildings, unlinkedDeals]);
 
   const dtiColor = stats.avgDTI == null ? 'var(--text-primary)'
     : stats.avgDTI <= 0.36 ? 'var(--success)' : stats.avgDTI <= 0.43 ? 'var(--warning)' : 'var(--error)';
+  const allScreened = stats.totalApplicants > 0 && stats.screenedApplicants === stats.totalApplicants;
 
   return (
     <div className="portfolio-stats">
@@ -104,17 +106,19 @@ function PortfolioStats({ buildings, unlinkedDeals }) {
         <span className="portfolio-stat-label">Revenue</span>
       </div>
       <div className="portfolio-stat">
-        <span className="portfolio-stat-value">{stats.applicants}</span>
-        <span className="portfolio-stat-label">Applicants</span>
+        <span className="portfolio-stat-value" style={{ color: allScreened ? 'var(--success)' : 'var(--text-primary)' }}>
+          {stats.screenedApplicants} of {stats.totalApplicants}
+        </span>
+        <span className="portfolio-stat-label">Screened</span>
       </div>
       <div className="portfolio-stat">
         <span className="portfolio-stat-value" style={{ color: dtiColor }}>
           {stats.avgDTI != null ? `${(stats.avgDTI * 100).toFixed(1)}%` : '--'}
         </span>
-        <span className="portfolio-stat-label">Avg DTI</span>
+        <span className="portfolio-stat-label">Portfolio DTI</span>
       </div>
       <div className="portfolio-stat">
-        <span className="portfolio-stat-value" style={{ color: stats.vacant > 0 ? 'var(--warning)' : 'var(--text-primary)' }}>
+        <span className="portfolio-stat-value" style={{ color: stats.vacant > 0 ? 'var(--warning)' : 'var(--success)' }}>
           {stats.vacant}
         </span>
         <span className="portfolio-stat-label">Vacant</span>
@@ -138,7 +142,8 @@ function ActivityCallout({ buildings }) {
     for (const b of buildings) {
       for (const u of b.units) {
         if (!u.deal) continue;
-        const unitLabel = u.name ? `${b.address} Unit ${u.name}` : b.address;
+        const bLabel = b.name || b.address;
+        const unitLabel = u.name ? `${bLabel} Unit ${u.name}` : bLabel;
         events.push({
           unitLabel,
           deal: u.deal,
@@ -258,52 +263,26 @@ function UnitRow({ unit, building, onNavigate, onCreateDeal, isLast }) {
 }
 
 function BuildingCard({ building, expanded, onToggle, onNavigate, onCreateDeal }) {
-  const isSingle = building.units.length === 1;
-  const unit = isSingle ? building.units[0] : null;
-  const vacant = isSingle && !unit.deal;
-
-  const locationSub = `${building.city}, ${building.state}`;
-
-  // Single-unit row — same compact layout as multi-unit header
-  if (isSingle) {
-    const active = unit.deal ? 1 : 0;
-    const vacantCount = unit.deal ? 0 : 1;
-    const rev = unit.deal ? (unit.monthlyCost || 0) : 0;
-
-    return (
-      <div
-        className="building-row"
-        onClick={!vacant && unit.deal ? () => onNavigate(unit.deal.projectId) : undefined}
-        style={{ cursor: vacant ? 'default' : 'pointer', animationDelay: '0ms' }}
-      >
-        <span className="building-type-badge">{building.type}</span>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }}>
-          <span className="building-row-address">{building.address}</span>
-          <span className="building-row-sub">{locationSub} · {unit.bedrooms || 0}BR · ${(unit.monthlyCost || 0).toLocaleString()}/mo</span>
-        </div>
-        <div style={{ flex: 1 }} />
-        <div className="building-header-stats">
-          <div><span className="bh-stat-value">1</span><span className="bh-stat-label">Units</span></div>
-          <div><span className="bh-stat-value">{active}</span><span className="bh-stat-label">Active</span></div>
-          <div><span className="bh-stat-value" style={{ color: vacantCount > 0 ? 'var(--warning)' : 'inherit' }}>{vacantCount}</span><span className="bh-stat-label">Vacant</span></div>
-          <div><span className="bh-stat-value">${rev.toLocaleString()}</span><span className="bh-stat-label">Revenue</span></div>
-        </div>
-        {unit.deal ? <StagePill stage={unit.deal.stage} /> : <StagePill stage={null} />}
-      </div>
-    );
-  }
-
-  // Multi-unit card
+  const displayName = building.name || building.address;
+  const locationSub = building.name
+    ? `${building.address}, ${building.city}, ${building.state}`
+    : `${building.city}, ${building.state}`;
   const activeUnits = building.units.filter((u) => u.deal).length;
   const vacantUnits = building.units.length - activeUnits;
   const totalRevenue = building.units.reduce((s, u) => s + (u.deal ? (u.monthlyCost || 0) : 0), 0);
+
+  // Collect deal stages for pills — deduplicate and order by urgency
+  const dealStages = building.units
+    .filter((u) => u.deal)
+    .map((u) => u.deal.stage || 'screening');
+  const uniqueStages = STAGE_ORDER.filter((s) => dealStages.includes(s));
 
   return (
     <div className="building-card-multi">
       <div className="building-header" onClick={onToggle}>
         <span className="building-type-badge">{building.type}</span>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }}>
-          <span className="building-row-address">{building.address}</span>
+          <span className="building-row-address">{displayName}</span>
           <span className="building-row-sub">{locationSub}</span>
         </div>
         <svg
@@ -312,6 +291,17 @@ function BuildingCard({ building, expanded, onToggle, onNavigate, onCreateDeal }
         >
           <path d="M9 18l6-6-6-6" />
         </svg>
+        {!expanded && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+            {uniqueStages.map((s) => {
+              const count = dealStages.filter((ds) => ds === s).length;
+              return (
+                <StagePill key={s} stage={s} count={count > 1 ? count : undefined} />
+              );
+            })}
+            {activeUnits === 0 && <StagePill stage={null} />}
+          </div>
+        )}
         <div style={{ flex: 1 }} />
         <div className="building-header-stats">
           <div><span className="bh-stat-value">{building.units.length}</span><span className="bh-stat-label">Units</span></div>
@@ -319,11 +309,20 @@ function BuildingCard({ building, expanded, onToggle, onNavigate, onCreateDeal }
           <div><span className="bh-stat-value" style={{ color: vacantUnits > 0 ? 'var(--warning)' : 'inherit' }}>{vacantUnits}</span><span className="bh-stat-label">Vacant</span></div>
           <div><span className="bh-stat-value">${totalRevenue.toLocaleString()}</span><span className="bh-stat-label">Revenue</span></div>
         </div>
-        <StagePill stage={buildingSummaryStage(building.units)} />
       </div>
 
       {expanded && (
         <div className="building-units">
+          <div className="unit-row-header">
+            <div />
+            <div>Unit</div>
+            <div>Applicants</div>
+            <div>DTI</div>
+            <div>Credit</div>
+            <div>Stage</div>
+            <div>Activity</div>
+            <div />
+          </div>
           {building.units.map((u, i) => (
             <UnitRow
               key={String(u._id)}
@@ -349,6 +348,7 @@ export default function Dashboard() {
   const [expanded, setExpanded] = useState({});
   const [showCreateBuilding, setShowCreateBuilding] = useState(false);
   const [dealContext, setDealContext] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
 
   function loadOverview() {
@@ -357,12 +357,7 @@ export default function Dashboard() {
     api.getBuildingsOverview()
       .then((data) => {
         setOverview(data);
-        // Default: expand buildings with <5 units
-        const exp = {};
-        for (const b of data.buildings) {
-          if (b.units.length > 1 && b.units.length < 5) exp[b._id] = true;
-        }
-        setExpanded(exp);
+        setExpanded({});
       })
       .catch((err) => setFetchError(err.message || 'Failed to load properties'))
       .finally(() => setLoading(false));
@@ -393,6 +388,20 @@ export default function Dashboard() {
   const linkedDeals = buildings.reduce((s, b) => s + b.units.filter((u) => u.deal).length, 0);
   const totalDeals = linkedDeals + unlinkedDeals.length;
   const totalVacant = buildings.reduce((s, b) => s + b.units.filter((u) => !u.deal).length, 0);
+
+  const q = searchQuery.toLowerCase().trim();
+  const filteredBuildings = q
+    ? buildings.filter((b) =>
+        (b.name || '').toLowerCase().includes(q) ||
+        (b.address || '').toLowerCase().includes(q) ||
+        (b.city || '').toLowerCase().includes(q)
+      )
+    : buildings;
+  const filteredUnlinked = q
+    ? unlinkedDeals.filter((d) => (d.name || '').toLowerCase().includes(q))
+    : unlinkedDeals;
+  const totalFiltered = filteredBuildings.length + filteredUnlinked.length;
+  const totalAll = buildings.length + unlinkedDeals.length;
 
   return (
     <div className="app-layout">
@@ -436,8 +445,29 @@ export default function Dashboard() {
               <PortfolioStats buildings={buildings} unlinkedDeals={unlinkedDeals} />
               <ActivityCallout buildings={buildings} />
 
+              {totalAll > 1 && (
+                <div className="search-bar" style={{ marginBottom: 10 }}>
+                  <svg className="search-bar-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                  <input
+                    type="text"
+                    placeholder="Search properties by name, address, or city..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                  {q && <span className="search-bar-count">{totalFiltered} of {totalAll}</span>}
+                  {q && <button className="search-bar-clear" onClick={() => setSearchQuery('')}>&times;</button>}
+                </div>
+              )}
+
+              {q && totalFiltered === 0 ? (
+                <div className="search-empty-state">
+                  <span>&#128269;</span>
+                  <span>No results for &ldquo;{searchQuery}&rdquo;</span>
+                </div>
+              ) : (
+              <>
               <div className="building-list">
-                {buildings.map((b) => (
+                {filteredBuildings.map((b) => (
                   <BuildingCard
                     key={String(b._id)}
                     building={b}
@@ -449,13 +479,13 @@ export default function Dashboard() {
                 ))}
               </div>
 
-              {unlinkedDeals.length > 0 && (
+              {filteredUnlinked.length > 0 && (
                 <div style={{ marginTop: 24 }}>
                   <h3 style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                     Unlinked Deals
                   </h3>
                   <div className="building-list">
-                    {unlinkedDeals.map((d) => (
+                    {filteredUnlinked.map((d) => (
                       <div
                         key={String(d._id)}
                         className="building-row"
@@ -477,6 +507,8 @@ export default function Dashboard() {
                     ))}
                   </div>
                 </div>
+              )}
+              </>
               )}
             </>
           )}

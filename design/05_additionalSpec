@@ -1,0 +1,436 @@
+# CommonGround — Spec Addendum: Deep Credit Analysis & Safety Tab
+
+## Overview
+
+This addendum extends the existing Technical and Functional Specifications with three new capabilities: Payment Trajectory Analysis, Tradeline Composition Breakdown, and a dedicated Safety Tab. These features deepen the product's use of CRS credit data and criminal/eviction responses, transforming raw API output into analytical insight that no existing tool provides.
+
+All three features are derived from data already being pulled — no new external API calls are required. The backend performs additional processing on existing CRS responses before storing the results.
+
+---
+
+## 1. Payment Trajectory Analysis
+
+### What It Is
+
+A computed assessment of whether an applicant's credit behavior is improving, stable, or deteriorating over time. A credit score is a snapshot. Payment trajectory tells the story the score can't — is this person getting better or worse?
+
+### Data Source
+
+The Experian credit report tradeline array includes per-tradeline payment status fields. Depending on the sandbox depth, each tradeline may include:
+
+- Current payment status (current, 30-day late, 60-day late, 90+ day late, collection, charge-off)
+- Payment history string or array (month-by-month payment status codes going back up to 24 months)
+- Date of last delinquency
+- Open date and close date
+
+**Important:** The exact fields available depend on what the CRS sandbox returns. The backend should attempt to extract monthly payment history first. If month-by-month data is unavailable, fall back to computing trajectory from: date of last delinquency vs. account age, number of delinquencies vs. tradeline count, and the ratio of currently-delinquent vs. historically-delinquent accounts.
+
+### Data Model (stored on Person record)
+
+```
+paymentTrajectory: {
+  trend: String,           // "improving", "stable", "declining"
+  confidence: String,      // "high", "medium", "low" (based on data depth)
+  recentLateCount: Number, // late payments in last 12 months
+  olderLateCount: Number,  // late payments older than 12 months
+  trendScore: Number,      // -100 to +100, negative = deteriorating
+  windowMonths: Number,    // how many months of history were analyzed
+  computedAt: Date
+}
+```
+
+### Computation Logic
+
+The backend computes trajectory after the credit pull completes, as part of step 5 in the existing processing flow (alongside personal DTI and disposable income).
+
+**If month-by-month payment history is available:**
+
+1. Divide the available history into two halves: recent half and older half.
+2. Count delinquency events (any status worse than "current") in each half.
+3. Compute a trend score: `((olderLateCount - recentLateCount) / totalLateCount) * 100`. Positive means improving (more late payments in the past than recently). Negative means declining. Zero or no late payments means stable.
+4. Set confidence to "high" if 12+ months of history exist, "medium" if 6-11, "low" if under 6.
+
+**If only summary delinquency data is available (fallback):**
+
+1. Use delinquency count and date of last delinquency relative to account ages.
+2. If all delinquencies are older than 12 months and current statuses are clean: "improving."
+3. If delinquencies exist within the last 6 months: "declining."
+4. Otherwise: "stable."
+5. Confidence is always "low" in fallback mode.
+
+**Trend classification:**
+
+- trendScore > 25 → "improving"
+- trendScore between -25 and 25 → "stable"
+- trendScore < -25 → "declining"
+
+### Frontend Integration
+
+Payment trajectory appears in two places:
+
+**People tab — Layer 1 (identity row):** A small trend indicator next to the credit score. An upward arrow (green) for improving, a flat line (gray) for stable, a downward arrow (amber/red) for declining. This gives the manager an instant read without expanding the row.
+
+**Overlay panel — Credit section:** A trajectory summary line showing the trend classification, recent vs. older late count, and the window of analysis. Example: "Improving — 0 late payments in the past 12 months vs. 3 in the prior 12 months (24-month window, high confidence)."
+
+### Gemini Integration
+
+Payment trajectory data is included in the individual applicant assessment prompt. Added to the input alongside credit score and debt summary:
+
+```
+Payment trajectory: [trend] ([confidence] confidence). [recentLateCount] late payments in the recent [windowMonths/2] months vs. [olderLateCount] in the prior period.
+```
+
+This gives Gemini the ability to write insights like: "Mei's 640 credit score is accompanied by an improving payment trajectory with zero delinquencies in the past 12 months compared to 3 previously, which standard underwriting guidelines recognize as a positive compensating factor."
+
+---
+
+## 2. Tradeline Composition Breakdown
+
+### What It Is
+
+A categorized analysis of each applicant's debt portfolio by type — revolving credit (credit cards), installment loans (auto, student, personal), mortgage, and other. Instead of showing a flat list of tradelines, the dashboard presents a structured view of what kinds of debt each person carries, utilization per category, and payment health per category.
+
+At the group level, the composition is aggregated to show correlated debt risk — if everyone in the group carries heavy revolving debt, the group is more vulnerable to rate changes and payment shock than a group with diverse, stable installment debt.
+
+### Data Source
+
+Each tradeline in the Experian credit report includes an account type field. Standard Experian account type codes map to categories:
+
+- **Revolving:** credit cards, retail cards, lines of credit, HELOCs
+- **Installment:** auto loans, student loans, personal loans, furniture/appliance loans
+- **Mortgage:** first mortgage, second mortgage, home equity loans
+- **Other:** collections, charge-offs, accounts that don't fit standard categories
+
+### Data Model — Individual (stored on Person record)
+
+```
+tradelineComposition: {
+  categories: [
+    {
+      type: String,              // "revolving", "installment", "mortgage", "other"
+      count: Number,             // number of tradelines in this category
+      totalBalance: Number,      // combined balance
+      totalCreditLimit: Number,  // combined credit limit (revolving only, null for others)
+      utilization: Number,       // balance / limit as percentage (revolving only, null for others)
+      monthlyPayment: Number,    // combined monthly payment obligations
+      onTimePercent: Number,     // percentage of tradelines in this category that are current
+      avgAge: Number             // average account age in months
+    }
+  ],
+  dominantType: String,          // category with highest total balance
+  revolvingUtilization: Number,  // overall revolving utilization (key risk indicator)
+  installmentToRevolvingRatio: Number, // ratio of installment to revolving debt
+  computedAt: Date
+}
+```
+
+### Data Model — Group (stored on Deal, inside group metrics)
+
+```
+groupTradelineComposition: {
+  aggregateByType: [
+    {
+      type: String,
+      totalBalance: Number,      // combined across all people
+      totalMonthlyPayment: Number,
+      avgUtilization: Number,    // average revolving utilization across people (revolving only)
+      peopleCount: Number        // how many people carry this type
+    }
+  ],
+  debtConcentrationRisk: String,   // "low", "moderate", "high"
+  dominantGroupDebtType: String,   // which type represents the most group debt
+  revolvingHeavyCount: Number,     // people with revolving utilization > 50%
+  computedAt: Date
+}
+```
+
+### Computation Logic
+
+**Individual composition** is computed after the credit pull completes (step 5 in the processing flow):
+
+1. Iterate through the tradeline array.
+2. Map each tradeline's account type to one of four categories using an account type mapping table.
+3. Aggregate balances, limits, payments, and payment statuses per category.
+4. Compute revolving utilization as total revolving balance / total revolving limit.
+5. Compute installment-to-revolving ratio as total installment balance / total revolving balance (handle zero revolving gracefully).
+6. Identify the dominant type by highest total balance.
+
+**Group composition** is computed as part of the deal reassessment (step 8 in the processing flow), alongside existing group metrics:
+
+1. Aggregate individual compositions across all active people.
+2. Compute debt concentration risk:
+   - "high" if one debt type represents more than 70% of total group debt, OR if 75%+ of people have revolving utilization above 50%.
+   - "moderate" if one type represents 50-70%, OR if 50-74% of people have high revolving utilization.
+   - "low" otherwise.
+3. Identify the dominant group debt type.
+
+### Frontend Integration
+
+**People tab — Overlay panel (credit section):** Below the existing tradeline list, add a composition summary showing a horizontal stacked bar representing the balance distribution across categories, with each category color-coded. Below the bar: revolving utilization as a percentage with a color indicator (green ≤ 30%, amber 30-50%, red > 50%), installment-to-revolving ratio, and the number of tradelines per category.
+
+**Financials tab — New subsection "Credit Composition":** A group-level view showing the aggregated composition. A stacked bar per person (so the manager can visually compare debt profiles side by side), the debt concentration risk indicator, and a count of how many people have high revolving utilization.
+
+### Gemini Integration
+
+**Individual assessment prompt** now includes:
+
+```
+Credit composition: [dominantType] dominant. Revolving utilization at [revolvingUtilization]% across [count] revolving accounts. Installment-to-revolving ratio: [ratio]. [onTimePercent]% of revolving accounts current.
+```
+
+**Group assessment prompt** (affordability section) now includes:
+
+```
+Group credit composition: [dominantGroupDebtType] debt is dominant at [percentage]% of total group debt. [revolvingHeavyCount] of [totalPeople] applicants have revolving utilization above 50%. Debt concentration risk: [level].
+```
+
+This enables Gemini insights like: "The group's debt is 68% revolving with 3 of 4 applicants above 50% revolving utilization, which standard lending guidelines flag as elevated risk for payment shock if rates increase."
+
+---
+
+## 3. Safety Tab
+
+### What It Is
+
+A dedicated tab within the deal view for reviewing criminal background checks, eviction history, and identity verification results. The Safety tab presents these as factual records with contextual depth — recency, severity classification, jurisdiction, and disposition — rather than binary pass/fail indicators.
+
+The tab exists separately from the People and Financials tabs because background screening is a distinct decision axis from financial assessment. Mixing criminal records into credit analysis conflates two different types of risk evaluation. A dedicated tab also allows for appropriate legal disclaimers and contextual framing.
+
+### Design Principles
+
+1. **Facts only, no automated decisions.** The tab presents records. It never recommends approval or denial based on criminal or eviction history. The manager interprets.
+2. **Recency matters.** A 10-year-old dismissed misdemeanor is fundamentally different from a recent conviction. The UI emphasizes time context.
+3. **Disposition matters.** Dismissed, acquitted, and expunged records carry different weight than convictions. The UI surfaces disposition status prominently.
+4. **Fair housing compliance.** A persistent disclaimer reminds the manager that blanket policies based on criminal history may violate fair housing regulations. This is not legal advice — it is a factual reference to published HUD guidance.
+5. **No PII exposure.** The Safety tab shows first name and last initial (or last 4 of SSN) for identification. Full addresses and DOBs are not displayed on this tab.
+
+### Data Model — Criminal Record (enhanced from current spec)
+
+The current spec stores `records array (offense details)`. This addendum structures the array:
+
+```
+criminal: {
+  records: [
+    {
+      offenseDescription: String,     // what the charge was
+      offenseType: String,            // "felony", "misdemeanor", "infraction", "unknown"
+      offenseCategory: String,        // "violent", "property", "drug", "financial", "traffic", "other"
+      jurisdiction: String,           // state or county
+      offenseDate: Date,              // when it occurred
+      dispositionDate: Date,          // when it was resolved
+      disposition: String,            // "convicted", "dismissed", "acquitted", "nolle prosequi", "deferred", "expunged", "pending", "unknown"
+      recencyCategory: String,        // computed: "recent" (< 2 years), "moderate" (2-7 years), "historical" (7+ years)
+      severity: String               // computed: see severity matrix below
+    }
+  ],
+  summary: {
+    totalRecords: Number,
+    convictionCount: Number,          // only records with disposition = "convicted"
+    dismissedCount: Number,
+    mostRecentDate: Date,
+    mostSeriousOffense: String,       // the highest severity record found
+    overallSeverity: String           // "none", "low", "moderate", "elevated" — see computation
+  },
+  processingStatus: String            // "pending", "complete", "failed"
+}
+```
+
+### Data Model — Eviction Record (enhanced from current spec)
+
+```
+eviction: {
+  records: [
+    {
+      filingDate: Date,
+      jurisdiction: String,           // county
+      plaintiff: String,              // property owner / management company (not the applicant)
+      outcome: String,                // "judgment_for_plaintiff", "judgment_for_defendant", "dismissed", "settled", "pending", "unknown"
+      amount: Number,                 // judgment amount if applicable, null otherwise
+      recencyCategory: String,        // computed: same categories as criminal
+    }
+  ],
+  summary: {
+    totalFilings: Number,
+    judgmentsAgainst: Number,          // only filings where outcome = judgment_for_plaintiff
+    dismissedCount: Number,
+    mostRecentDate: Date,
+    overallSeverity: String           // "none", "low", "moderate", "elevated"
+  },
+  processingStatus: String
+}
+```
+
+### Data Model — Identity (enhanced from current spec)
+
+```
+identity: {
+  cviScore: Number,                   // 0-50
+  verificationStatus: String,         // "verified" (>30), "uncertain" (15-30), "failed" (<15)
+  matchDetails: {                     // if available from FlexID response
+    ssnMatch: Boolean,
+    dobMatch: Boolean,
+    addressMatch: Boolean,
+    nameMatch: Boolean
+  },
+  processingStatus: String
+}
+```
+
+**Note on matchDetails:** The FlexID response may or may not include granular match breakdowns depending on the sandbox. If available, extract and store them. If not, set matchDetails to null and rely solely on the CVI score.
+
+### Severity Computation
+
+**Criminal severity matrix:**
+
+| Disposition     | Felony     | Misdemeanor | Infraction | Unknown Type |
+|----------------|------------|-------------|------------|-------------|
+| Convicted      | elevated   | moderate    | low        | moderate    |
+| Pending        | elevated   | moderate    | low        | moderate    |
+| Deferred       | moderate   | low         | low        | low         |
+| Dismissed      | low        | low         | none       | low         |
+| Acquitted      | none       | none        | none       | none        |
+| Expunged       | none       | none        | none       | none        |
+| Nolle Prosequi | low        | none        | none       | none        |
+| Unknown        | moderate   | low         | low        | low         |
+
+**Recency modifier:** If a record's recencyCategory is "historical" (7+ years), downgrade severity by one level (elevated → moderate, moderate → low, low → none). This reflects how most screening guidelines treat aging records.
+
+**Overall criminal severity:** The highest individual record severity after applying the recency modifier.
+
+**Eviction severity:**
+
+| Outcome                  | Severity  |
+|--------------------------|-----------|
+| Judgment for plaintiff   | elevated (moderate if 7+ years old) |
+| Pending                  | moderate  |
+| Settled                  | low       |
+| Dismissed                | none      |
+| Judgment for defendant   | none      |
+| Unknown                  | low       |
+
+**Overall eviction severity:** The highest individual record severity.
+
+### Safety Tab — Frontend Layout
+
+The Safety tab appears as the fourth tab within the deal view, after People, Financials, and Breakdown.
+
+**Tab header:** "Safety" with a shield icon. If any person in the deal has an overall severity of "moderate" or "elevated" on criminal or eviction, a small amber or red dot appears on the tab label (similar to how stage pills indicate status).
+
+**Disclaimer bar:** A persistent, non-dismissible bar at the top of the tab:
+
+> "Background records are presented for informational purposes only. This tool does not make screening decisions. Policies that automatically deny applicants based on criminal history may violate fair housing regulations. Consult HUD guidance and applicable state/local laws before making decisions based on this information."
+
+**Group overview row:** A horizontal strip showing each person as a card with their first name, last initial, and three status indicators: criminal (shield icon, colored by overall severity), eviction (home icon, colored by overall severity), and identity (fingerprint icon, colored by verification status). This gives the manager an instant scan of the group's background status.
+
+**Per-person detail cards:** Below the overview row, one expandable card per person. Each card contains three sections:
+
+**Criminal section:** If clean, a single line: "No criminal records found." If records exist, each record rendered as a row showing: offense description, offense type badge (felony/misdemeanor/infraction), disposition badge (color-coded — green for dismissed/acquitted/expunged, gray for deferred/nolle prosequi, amber for pending, red for convicted), jurisdiction, offense date with recency label ("8 years ago — historical"), and the computed severity. Records are sorted by date, most recent first.
+
+**Eviction section:** If clean, a single line: "No eviction filings found." If records exist, each record rendered similarly: filing date with recency label, jurisdiction, outcome badge (color-coded like dispositions), judgment amount if applicable. Records sorted by date, most recent first.
+
+**Identity section:** CVI score displayed prominently with color coding (green >30, amber 15-30, red <15). Verification status label. If match details are available, show which components matched and which didn't. If a component didn't match, a brief note: "Address mismatch may indicate a recent move."
+
+### Safety Tab — AI Integration
+
+**Per-person safety assessment** is a new Gemini prompt context, triggered alongside the existing individual assessment (step 6 in the processing flow) — only fires if criminal or eviction records exist.
+
+**Safety-specific system prompt addition (appended to the sitewide prompt):**
+
+```
+ADDITIONAL RULES FOR BACKGROUND ASSESSMENT: 1. Never characterize a person based on their record. 2. Never use words like dangerous, risky, untrustworthy, or criminal to describe a person. 3. Never recommend approval or denial based on background records. 4. Only state what the record contains, when it occurred, and its disposition. 5. Reference recency in years and disposition status in every sentence about a record. 6. If all records are dismissed, acquitted, or expunged, state this explicitly. 7. Frame around what the record means for the application, not what it means about the person.
+```
+
+**Prompt input:**
+
+```
+Background records for [first name]:
+Criminal: [totalRecords] records. [For each: offenseType, offenseCategory, disposition, recencyCategory, years ago].
+Eviction: [totalFilings] filings. [For each: outcome, recencyCategory, years ago].
+Identity: CVI score [score], verification [status].
+```
+
+**Output:** A 2-3 sentence factual summary stored on the person record as `aiSafetySummary`. This appears on the Safety tab per-person card.
+
+Example output: "Mei's background check returned one misdemeanor property offense from 2018 with a disposition of dismissed, placing it in the historical category at 8 years old. No eviction filings were found and identity verification scored 42 out of 50, confirming verified status."
+
+**Group safety summary** is triggered alongside the group assessment (step 8) — only fires if any person has records. Input: all person safety summaries. Output: a 2-3 sentence group-level overview stored on the deal as `aiSafetyOverview`. This appears at the top of the Safety tab below the disclaimer.
+
+### API Contracts
+
+**GET /api/deals/:dealId/safety** — Returns the Safety tab data for a deal. Includes per-person criminal summaries, eviction summaries, identity verification, computed severities, and AI safety assessments. Never returns full SSNs or DOBs. Manager-authenticated.
+
+**GET /api/deals/:dealId/people/:personId/safety** — Returns detailed safety data for a single person. Includes full record arrays with all fields. Manager-authenticated.
+
+### Processing Flow Updates
+
+The existing processing flow (steps 1-9) is modified:
+
+**Step 4 (updated):** As criminal and eviction calls return, the backend now parses the response into the structured record format defined above, computing offense type, category, recency, disposition, and severity for each record. It then computes the summary object (total records, conviction count, most serious offense, overall severity).
+
+**Step 6 (updated):** Once all checks are complete, the backend fires TWO Gemini calls concurrently: the existing individual financial assessment AND (if criminal or eviction records exist) the safety assessment. Both use the sitewide system prompt; the safety call appends the safety-specific rules.
+
+**Step 8 (updated):** When the deal is reassessed, if any person has criminal or eviction records, fire the group safety summary alongside the existing group assessment and model analysis.
+
+### What Data Is NOT Sent to Gemini
+
+- No SSNs (existing rule)
+- No full addresses (existing rule)
+- No DOBs
+- No last names — safety prompts use first names only
+- No jurisdiction details beyond state level (city/county could narrow identification)
+- No plaintiff names from eviction records
+
+### Hackathon Prioritization Update
+
+The Safety tab moves into the "should build" tier:
+
+**Should build (updated):** CRS criminal and eviction integration WITH structured record parsing and severity computation, Safety tab with per-person detail cards and disclaimer, CRS FlexID integration with match detail extraction, safety-specific Gemini assessments, payment trajectory computation and trend indicator, tradeline composition computation and visualization.
+
+Payment trajectory and tradeline composition are lower-risk additions because they enhance existing views (People tab and Financials tab) rather than requiring a new tab. They should be implemented first. The Safety tab is a larger UI surface area and should be built after the core flow is complete.
+
+---
+
+## 4. Updated Gemini Prompt Map
+
+After these additions, the complete Gemini prompt map is:
+
+| Prompt Context | Trigger | Input Includes (new) | Output Location |
+|---|---|---|---|
+| Individual financial assessment | All CRS checks complete | + payment trajectory, tradeline composition | Person record: aiSummary, aiFull |
+| Individual safety assessment | All CRS checks complete + records exist | Criminal/eviction summaries | Person record: aiSafetySummary |
+| Group financial assessment | Group composition changes | + group tradeline composition, debt concentration risk | Deal record: aiGroupAssessment |
+| Group safety summary | Group composition changes + any records exist | Person safety summaries | Deal record: aiSafetyOverview |
+| Split model analysis | (unchanged) | (unchanged) | Deal record: aiModelAnalysis |
+| Homepage activity insight | (unchanged) | (unchanged) | Org record |
+| Financial summary compilation | Manager clicks Generate | + safety overview if exists | Deal record: aiSummary |
+
+Total Gemini calls per person: 2 (financial + safety, if records exist) or 1 (financial only, if clean background).
+Total Gemini calls per deal reassessment: 3 (group financial + group safety + model analysis) or 2 (group financial + model analysis, if all backgrounds clean).
+
+---
+
+## 5. Security Considerations (Addendum)
+
+**Criminal/eviction data handling:** Criminal and eviction records are sensitive personal information. They are stored in MongoDB alongside other CRS results. The frontend receives only what is needed for the Safety tab — structured summaries, not raw CRS responses.
+
+**Safety tab access:** The Safety tab is only available to authenticated managers. It is never exposed to applicants.
+
+**No automated screening decisions:** The system computes severity classifications for UI purposes (color coding, sort order) but never uses severity to auto-flag, auto-decline, or auto-advance any person or deal. All status changes remain manual manager actions.
+
+**Fair housing disclaimer:** The disclaimer on the Safety tab references HUD guidance on criminal history screening. It does not constitute legal advice. The product documentation should note that property managers are responsible for compliance with federal, state, and local fair housing laws.
+
+**Gemini safety prompts:** The safety-specific prompt rules prevent Gemini from generating language that could be interpreted as a screening recommendation. The rules explicitly prohibit characterizing people based on their records, recommending denial, or using speculative language about future behavior.
+
+---
+
+## 6. Sample Data Enhancement
+
+To demonstrate these features in the demo, the sample data scenarios should include at least one person with a criminal or eviction record. Suggested additions using CRS sandbox test cases:
+
+**Deal 1 (412 Irving St):** Yuki Tanaka has one misdemeanor (trespassing, dismissed, 4 years ago). This demonstrates a low-severity historical record that the Safety tab contextualizes appropriately.
+
+**Deal 2 (1847 Fruitvale Ave):** Marco Reyes has one eviction filing (judgment for plaintiff, settled, 3 years ago, $2,400). This demonstrates an eviction record with financial context.
+
+**Deal 3 (2250 Clement St):** Andre Johnson has one misdemeanor (disorderly conduct, convicted, 6 years ago) and one eviction filing (dismissed, 5 years ago). This demonstrates multiple records across categories with different dispositions.
+
+These scenarios should use whatever sandbox test SSNs return records from CRS. The CTO mentioned they have test cases that return specific results — coordinate with the CRS team to identify SSNs that produce criminal and eviction records for the demo.

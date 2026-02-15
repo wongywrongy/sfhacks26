@@ -33,6 +33,7 @@ export default function IntakeForm() {
   const [form, setForm] = useState({
     firstName: '',
     lastName: '',
+    email: '',
     dateOfBirth: '',
     street: '',
     city: '',
@@ -74,6 +75,8 @@ export default function IntakeForm() {
     const errors = {}
     if (!form.firstName.trim()) errors.firstName = 'Required'
     if (!form.lastName.trim()) errors.lastName = 'Required'
+    if (!form.email.trim()) errors.email = 'Required'
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) errors.email = 'Enter a valid email'
     if (!form.dateOfBirth) errors.dateOfBirth = 'Required'
     if (ssnRef.current.length !== 9) errors.ssn = 'Must be 9 digits'
     if (!form.street.trim()) errors.street = 'Required'
@@ -177,6 +180,21 @@ export default function IntakeForm() {
               />
               {fieldErrors.lastName && <span className="error-text">{fieldErrors.lastName}</span>}
             </div>
+          </div>
+
+          {/* Email */}
+          <div className="field-group full-width">
+            <label htmlFor="email">Email Address</label>
+            <input
+              id="email"
+              type="email"
+              value={form.email}
+              onChange={(e) => updateField('email', e.target.value)}
+              placeholder="you@example.com"
+              className={fieldErrors.email ? 'field-error' : ''}
+            />
+            <span className="field-hint">We'll send your financial report to this email.</span>
+            {fieldErrors.email && <span className="error-text">{fieldErrors.email}</span>}
           </div>
 
           {/* DOB + SSN */}

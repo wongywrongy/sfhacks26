@@ -202,6 +202,54 @@ function RiskAnalysis({ analytics, dependencyInsight, removedIds, setRemovedIds 
   );
 }
 
+const COMP_COLORS = { revolving: '#3b82f6', installment: '#8b5cf6', mortgage: '#16a34a', other: '#94a3b8' };
+const CONC_BADGE = { low: { bg: '#f0fdf4', color: '#16a34a', border: '#bbf7d0' }, moderate: { bg: '#fffbeb', color: '#ca8a04', border: '#fde68a' }, high: { bg: '#fef2f2', color: '#dc2626', border: '#fecaca' } };
+
+function GroupComposition({ composition }) {
+  const agg = composition.aggregateByType || {};
+  const total = composition.totalGroupBalance || 0;
+  const concStyle = CONC_BADGE[composition.debtConcentrationRisk] || CONC_BADGE.low;
+
+  return (
+    <div className="breakdown-card" style={{ padding: '12px 14px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        <span style={{ fontWeight: 800, fontSize: 14, letterSpacing: '-0.02em' }}>Credit Composition</span>
+        <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 6, background: concStyle.bg, color: concStyle.color, border: `1px solid ${concStyle.border}` }}>
+          {composition.debtConcentrationRisk} concentration
+        </span>
+      </div>
+
+      {/* Group stacked bar */}
+      {total > 0 && (
+        <div style={{ marginBottom: 10 }}>
+          <div style={{ display: 'flex', height: 20, borderRadius: 6, overflow: 'hidden', marginBottom: 4 }}>
+            {Object.entries(agg).filter(([, c]) => c.totalBalance > 0).map(([cat, c]) => (
+              <div key={cat} style={{ width: `${(c.totalBalance / total) * 100}%`, background: COMP_COLORS[cat], minWidth: 2, display: 'flex', alignItems: 'center', justifyContent: 'center' }} title={`${cat}: ${fmt(c.totalBalance)}`}>
+                {(c.totalBalance / total) > 0.12 && <span style={{ fontSize: 9, color: 'white', fontWeight: 700, textTransform: 'capitalize' }}>{cat}</span>}
+              </div>
+            ))}
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 14px', fontSize: 10 }}>
+            {Object.entries(agg).filter(([, c]) => c.count > 0).map(([cat, c]) => (
+              <span key={cat} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                <span style={{ width: 7, height: 7, borderRadius: 2, background: COMP_COLORS[cat], flexShrink: 0 }} />
+                <span style={{ fontWeight: 600, textTransform: 'capitalize' }}>{cat}</span>
+                <span style={{ color: 'var(--text-muted)' }}>{c.count} accts · {fmt(c.totalBalance)} ({total > 0 ? Math.round((c.totalBalance / total) * 100) : 0}%)</span>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Summary stats */}
+      <div style={{ display: 'flex', gap: 16, fontSize: 11, color: 'var(--text-secondary)' }}>
+        <span>Dominant: <b style={{ textTransform: 'capitalize' }}>{composition.dominantGroupDebtType || 'N/A'}</b></span>
+        <span>High rev. util: <b style={{ color: composition.revolvingHeavyCount > 0 ? 'var(--error)' : 'var(--success)' }}>{composition.revolvingHeavyCount}/{composition.memberCount}</b> members</span>
+      </div>
+    </div>
+  );
+}
+
 export default function AnalyticsTab({ projectId }) {
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -325,6 +373,9 @@ export default function AnalyticsTab({ projectId }) {
 
         <RiskAnalysis analytics={analytics} dependencyInsight={dependencyInsight} removedIds={removedIds} setRemovedIds={setRemovedIds} />
       </div>
+
+      {/* CREDIT COMPOSITION */}
+      {analytics.groupTradelineComposition && <GroupComposition composition={analytics.groupTradelineComposition} breakdown={analytics.memberBreakdown || []} />}
     </div>
   );
 }

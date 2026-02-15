@@ -70,6 +70,8 @@ async function getProject(req, res) {
     identityStatus: m.identity?.status || CrsCheckStatus.PENDING,
     cviScore: m.identity?.cviScore ?? null,
     orgStatus: m.orgStatus,
+    paymentTrajectory: m.paymentTrajectory || null,
+    tradelineComposition: m.tradelineComposition || null,
     aiSummary: m.aiAssessment?.summary || null,
     aiFull: m.aiAssessment?.full || m.aiAssessment?.text || null,
     dateSubmitted: m.dateSubmitted,
@@ -171,6 +173,35 @@ async function getMember(req, res) {
     identity: member.identity || { status: 'pending' },
     personalDTI: member.personalDTI,
     disposableIncome: member.disposableIncome,
+    paymentTrajectory: member.paymentTrajectory || null,
+    tradelineComposition: member.tradelineComposition || null,
+    criminalStructured: member.criminalStructured ? {
+      records: (member.criminalStructured.records || []).map((r) => ({
+        offense: r.offense,
+        offenseType: r.offenseType,
+        disposition: r.disposition,
+        date: r.date,
+        recencyCategory: r.recencyCategory,
+        recencyLabel: r.recencyLabel,
+        jurisdiction: r.jurisdiction ? (typeof r.jurisdiction === 'string' ? r.jurisdiction.split(',')[0] : r.jurisdiction) : null,
+        severity: r.severity,
+      })),
+      summary: member.criminalStructured.summary,
+    } : null,
+    evictionStructured: member.evictionStructured ? {
+      records: (member.evictionStructured.records || []).map((r) => ({
+        filingDate: r.filingDate,
+        recencyCategory: r.recencyCategory,
+        recencyLabel: r.recencyLabel,
+        jurisdiction: r.jurisdiction ? (typeof r.jurisdiction === 'string' ? r.jurisdiction.split(',')[0] : r.jurisdiction) : null,
+        outcome: r.outcome,
+        amount: r.amount,
+        severity: r.severity,
+      })),
+      summary: member.evictionStructured.summary,
+    } : null,
+    identityStructured: member.identityStructured || null,
+    aiSafetySummary: member.aiSafetySummary || null,
     aiAssessment: member.aiAssessment,
     orgStatus: member.orgStatus,
     orgNotes: member.orgNotes || '',
@@ -215,4 +246,50 @@ async function updateStage(req, res) {
   res.json({ success: true, stage });
 }
 
-module.exports = { createProject, getProject, getProjects, getMember, updateMemberOrgStatus, retryMemberChecks, updateStage };
+async function getSafety(req, res) {
+  const project = await projectService.getProjectDetail(req.params.projectId, req.orgId);
+  if (!project) {
+    return res.status(404).json({ error: true, message: 'Project not found' });
+  }
+
+  const members = (project.members || []).map((m) => ({
+    _id: m._id,
+    firstName: m.firstName,
+    lastInitial: m.lastName ? m.lastName[0] : '',
+    criminalStructured: m.criminalStructured ? {
+      records: (m.criminalStructured.records || []).map((r) => ({
+        offense: r.offense,
+        offenseType: r.offenseType,
+        disposition: r.disposition,
+        date: r.date,
+        recencyCategory: r.recencyCategory,
+        recencyLabel: r.recencyLabel,
+        jurisdiction: r.jurisdiction ? (typeof r.jurisdiction === 'string' ? r.jurisdiction.split(',')[0] : r.jurisdiction) : null,
+        severity: r.severity,
+      })),
+      summary: m.criminalStructured.summary,
+    } : null,
+    evictionStructured: m.evictionStructured ? {
+      records: (m.evictionStructured.records || []).map((r) => ({
+        filingDate: r.filingDate,
+        recencyCategory: r.recencyCategory,
+        recencyLabel: r.recencyLabel,
+        jurisdiction: r.jurisdiction ? (typeof r.jurisdiction === 'string' ? r.jurisdiction.split(',')[0] : r.jurisdiction) : null,
+        outcome: r.outcome,
+        amount: r.amount,
+        severity: r.severity,
+      })),
+      summary: m.evictionStructured.summary,
+    } : null,
+    identityStructured: m.identityStructured || null,
+    aiSafetySummary: m.aiSafetySummary || null,
+  }));
+
+  res.json({
+    members,
+    aiSafetyOverview: project.aiSafetyOverview || null,
+    disclaimer: 'Background screening information is provided for informational purposes only. All housing decisions must comply with the Fair Housing Act and applicable state and local laws. Criminal history and eviction records alone cannot be the basis for denial. Each applicant must be evaluated individually based on a legitimate business necessity standard.',
+  });
+}
+
+module.exports = { createProject, getProject, getProjects, getMember, updateMemberOrgStatus, retryMemberChecks, updateStage, getSafety };

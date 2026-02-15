@@ -10,7 +10,7 @@ body {
   font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: linear-gradient(135deg, #f8fafc 0%, #dbeafe 45%, #bfdbfe 100%);
+  background: linear-gradient(135deg, #f0f5ff 0%, #c9ddfb 45%, #aecdfb 100%);
   background-attachment: fixed;
   color: #18181b;
   font-size: 14px;

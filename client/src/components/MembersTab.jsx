@@ -1,34 +1,9 @@
+import { useState } from 'react';
+
 const MEMBER_COLORS = ['#2563eb', '#3b82f6', '#7c3aed', '#6366f1', '#1d4ed8'];
 
 const fmt = (n) => (n < 0 ? '-' : '') + '$' + Math.abs(Math.round(n)).toLocaleString();
 const scoreColor = (s) => s >= 740 ? '#16a34a' : s >= 670 ? '#ca8a04' : '#dc2626';
-const cviLabel = (s) => s >= 80 ? 'strong' : s >= 60 ? 'moderate' : 'weak';
-const cviDotColor = (s) => s >= 80 ? '#16a34a' : s >= 60 ? '#ca8a04' : '#dc2626';
-
-const STATUS_COLORS = { approved: '#16a34a', flagged: '#ca8a04', ineligible: '#dc2626' };
-
-function CheckIcon({ clear, label, count }) {
-  if (clear) {
-    return (
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-        <svg width="14" height="14" viewBox="0 0 16 16">
-          <circle cx="8" cy="8" r="8" fill="#16a34a" opacity="0.12" />
-          <path d="M5 8l2 2 4-4" fill="none" stroke="#16a34a" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-        <span style={{ fontSize: 10, color: '#64748b' }}>{label}</span>
-      </span>
-    );
-  }
-  return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-      <svg width="14" height="14" viewBox="0 0 16 16">
-        <circle cx="8" cy="8" r="8" fill="#dc2626" opacity="0.12" />
-        <path d="M5.5 5.5l5 5M10.5 5.5l-5 5" fill="none" stroke="#dc2626" strokeWidth="1.8" strokeLinecap="round" />
-      </svg>
-      <span style={{ fontSize: 10, color: '#dc2626', fontWeight: 600 }}>{label}{count > 0 ? ` (${count})` : ''}</span>
-    </span>
-  );
-}
 
 function EmploymentIcon({ type }) {
   const s = { flexShrink: 0, opacity: 0.5 };
@@ -75,21 +50,33 @@ function AiCallout({ label, children }) {
   );
 }
 
-function hasFlags(m) {
-  return (
-    m.delinquencyCount > 0 ||
+function getOverallStatus(m) {
+  const allComplete =
+    m.creditStatus === 'complete' &&
+    m.criminalStatus === 'complete' &&
+    m.evictionStatus === 'complete' &&
+    m.identityStatus === 'complete';
+
+  if (m.orgStatus === 'ineligible')
+    return { label: 'Declined', color: '#dc2626', bg: 'rgba(220, 38, 38, 0.08)' };
+
+  if (!allComplete)
+    return { label: 'Pending', color: '#ca8a04', bg: 'rgba(202, 138, 4, 0.08)' };
+
+  if (
+    m.criminalRecordCount > 0 ||
     m.evictionRecordCount > 0 ||
-    (m.creditScore != null && m.creditScore < 670) ||
-    m.employmentType === 'gig' ||
-    m.criminalRecordCount > 0
-  );
+    (m.creditScore != null && m.creditScore < 580)
+  )
+    return { label: 'Flagged', color: '#dc2626', bg: 'rgba(220, 38, 38, 0.08)' };
+
+  return { label: 'Cleared', color: '#16a34a', bg: 'rgba(22, 163, 74, 0.08)' };
 }
 
 function generateRiskInsight(m, allMembers) {
   const parts = [];
   const name = m.firstName;
 
-  // Calculate group weighted credit average for context
   const scored = allMembers.filter((x) => x.creditScore != null);
   const totalIncome = scored.reduce((s, x) => s + x.monthlyIncome, 0);
   const weightedAvg = totalIncome > 0
@@ -118,27 +105,50 @@ function generateRiskInsight(m, allMembers) {
   return parts.slice(0, 2).join(' ') || null;
 }
 
-function PersonRow({ m, i, onClick, allMembers }) {
+function PersonRow({ m, i, onNavigate, allMembers }) {
+  const [expanded, setExpanded] = useState(false);
   const color = MEMBER_COLORS[i % MEMBER_COLORS.length];
-  const flagged = hasFlags(m);
-  const riskText = flagged ? generateRiskInsight(m, allMembers) : null;
+  const status = getOverallStatus(m);
+
+  // Summary indicators for Layer 2
+  const creditText =
+    m.creditStatus === 'complete' && m.creditScore != null
+      ? `${m.creditScore} · ${m.paymentHistoryPct ?? '—'}% on-time`
+      : m.creditStatus === 'failed' ? 'Failed' : 'Pending';
+
+  const bgComplete = m.criminalStatus === 'complete' && m.evictionStatus === 'complete';
+  const bgClean = bgComplete && m.criminalRecordCount === 0 && m.evictionRecordCount === 0;
+  const recordCount = (m.criminalRecordCount || 0) + (m.evictionRecordCount || 0);
+  const bgText = !bgComplete
+    ? 'Pending'
+    : bgClean ? 'Clean' : `${recordCount} record${recordCount !== 1 ? 's' : ''}`;
+
+  const idText =
+    m.identityStatus === 'complete' && m.cviScore != null
+      ? (m.cviScore > 30 ? 'Verified' : `Failed (${m.cviScore})`)
+      : m.identityStatus === 'failed' ? 'Failed' : 'Pending';
+
+  const insight = generateRiskInsight(m, allMembers);
 
   return (
-    <div className="people-row" onClick={onClick}>
-      {/* Layer 1: Identity + Key Numbers */}
-      <div className="people-row-main">
+    <div className={`people-row ${expanded ? 'people-row-expanded' : ''}`}>
+      {/* Layer 1: Scan row */}
+      <div className="people-row-main" onClick={() => setExpanded(!expanded)}>
         <div className="people-row-identity">
           <div className="people-avatar" style={{ background: color }}>{m.firstName[0]}</div>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <span style={{ fontSize: 13, fontWeight: 700 }}>{m.firstName} {m.lastInitial}.</span>
-              {m.orgStatus && STATUS_COLORS[m.orgStatus] && (
-                <span style={{ fontSize: 9, fontWeight: 700, color: STATUS_COLORS[m.orgStatus], textTransform: 'capitalize' }}>{m.orgStatus}</span>
-              )}
+              <span
+                className="people-status-pill"
+                style={{ color: status.color, background: status.bg }}
+              >
+                {status.label}
+              </span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: 'var(--text-muted)' }}>
               <EmploymentIcon type={m.employmentType} />
-              <span>{m.employmentType} · {(m.incomeShare * 100).toFixed(0)}% of group income</span>
+              <span>{m.employmentType}</span>
             </div>
           </div>
         </div>
@@ -148,72 +158,67 @@ function PersonRow({ m, i, onClick, allMembers }) {
             <span className="people-stat-label">income</span>
           </div>
           <div className="people-stat credit-stat">
-            <span className="people-stat-value" style={{ color: m.creditScore != null ? scoreColor(m.creditScore) : 'var(--text-muted)' }}>
-              {m.creditScore ?? '—'}
+            <span className="people-stat-value" style={{ color: m.creditScore != null ? scoreColor(m.creditScore) : 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+              {m.creditScore ?? '\u2014'}
+              {m.paymentTrajectory?.trend === 'improving' && <span style={{ color: '#16a34a', fontSize: 10, fontWeight: 800, lineHeight: 1 }} title="Improving">&#9650;</span>}
+              {m.paymentTrajectory?.trend === 'stable' && <span style={{ color: '#94a3b8', fontSize: 9, fontWeight: 800, lineHeight: 1 }} title="Stable">&mdash;</span>}
+              {m.paymentTrajectory?.trend === 'declining' && <span style={{ color: '#dc2626', fontSize: 10, fontWeight: 800, lineHeight: 1 }} title="Declining">&#9660;</span>}
             </span>
             <span className="people-stat-label">credit</span>
           </div>
           <div className="people-stat">
             <span className="people-stat-value">{fmt(m.monthlyObligations)}/mo</span>
-            <span className="people-stat-label">{m.personalDTI != null ? `${(m.personalDTI * 100).toFixed(1)}% DTI` : 'debt'}</span>
+            <span className="people-stat-label">debt</span>
           </div>
-          <svg className="people-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6" /></svg>
-        </div>
-      </div>
-
-      {/* Layer 2: Screening Sections */}
-      <div className="people-screening">
-        <div className="people-screen-col">
-          <span className="people-screen-label">Credit</span>
-          <span className="people-screen-value">
-            {m.creditStatus === 'complete' ? (
-              <>
-                {m.creditScore} score, {m.paymentHistoryPct ?? '—'}% on-time,{' '}
-                {m.delinquencyCount > 0 ? (
-                  <span style={{ background: '#fef2f2', color: '#dc2626', fontWeight: 700, padding: '1px 5px', borderRadius: 4, fontSize: 10, border: '1px solid rgba(220,38,38,0.15)' }}>
-                    {m.delinquencyCount} delinq.
-                  </span>
-                ) : (
-                  <>{m.delinquencyCount} delinq.,</>
-                )}
-                {' '}{m.openTradelinesCount} tradelines
-              </>
-            ) : m.creditStatus === 'failed' ? <span style={{ color: 'var(--error)' }}>Check failed</span> : 'Processing...'}
-          </span>
-        </div>
-        <div className="people-screen-col">
-          <span className="people-screen-label">Background</span>
-          <span className="people-screen-value">
-            {m.criminalStatus === 'complete' && m.evictionStatus === 'complete' ? (
-              <span style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                <CheckIcon clear={m.criminalRecordCount === 0} label="Criminal" count={m.criminalRecordCount} />
-                <CheckIcon clear={m.evictionRecordCount === 0} label="Eviction" count={m.evictionRecordCount} />
-              </span>
-            ) : 'Processing...'}
-          </span>
-        </div>
-        <div className="people-screen-col">
-          <span className="people-screen-label">Identity</span>
-          <span className="people-screen-value">
-            {m.identityStatus === 'complete' && m.cviScore != null ? (
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                <span style={{ width: 7, height: 7, borderRadius: '50%', background: cviDotColor(m.cviScore), flexShrink: 0 }} />
-                <span style={{ fontSize: 11, fontWeight: 700, color: '#0f172a' }}>{m.cviScore}</span>
-                <span style={{ fontSize: 10, color: '#94a3b8' }}>{cviLabel(m.cviScore)}</span>
-              </span>
-            ) : m.identityStatus === 'failed' ? <span style={{ color: 'var(--error)' }}>Check failed</span> : 'Processing...'}
-          </span>
-        </div>
-      </div>
-
-      {/* Layer 3: Risk Insight (conditional) */}
-      {riskText && (
-        <div className="people-risk-line">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#92400e" strokeWidth="2.5" strokeLinecap="round" style={{ flexShrink: 0, marginTop: 1 }}>
-            <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-            <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
+          <svg
+            className={`people-chevron ${expanded ? 'people-chevron-down' : ''}`}
+            width="14" height="14" viewBox="0 0 24 24"
+            fill="none" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round"
+          >
+            <polyline points="9 18 15 12 9 6" />
           </svg>
-          <span>{riskText}</span>
+        </div>
+      </div>
+
+      {/* Layer 2: Expanded summary */}
+      {expanded && (
+        <div className="people-expanded">
+          <div className="people-summary-indicators">
+            <div className="people-indicator">
+              <span className="people-indicator-label">Credit</span>
+              <span className="people-indicator-value">{creditText}</span>
+            </div>
+            <span className="people-indicator-sep" />
+            <div className="people-indicator">
+              <span className="people-indicator-label">Background</span>
+              <span className={`people-indicator-value ${!bgClean && bgComplete ? 'people-indicator-alert' : ''}`}>{bgText}</span>
+            </div>
+            <span className="people-indicator-sep" />
+            <div className="people-indicator">
+              <span className="people-indicator-label">Identity</span>
+              <span className={`people-indicator-value ${idText.startsWith('Failed') ? 'people-indicator-alert' : ''}`}>{idText}</span>
+            </div>
+          </div>
+
+          {insight && (
+            <div className="people-insight">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#92400e" strokeWidth="2.5" strokeLinecap="round" style={{ flexShrink: 0, marginTop: 1 }}>
+                <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
+              </svg>
+              <span>{insight}</span>
+            </div>
+          )}
+
+          <button
+            className="people-detail-link"
+            onClick={(e) => { e.stopPropagation(); onNavigate(); }}
+          >
+            View full profile
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          </button>
         </div>
       )}
     </div>
@@ -221,6 +226,8 @@ function PersonRow({ m, i, onClick, allMembers }) {
 }
 
 export default function MembersTab({ members, groupAssessment, onSelectMember }) {
+  const [searchQuery, setSearchQuery] = useState('');
+
   if (members.length === 0) {
     return (
       <div className="empty-state">
@@ -233,23 +240,52 @@ export default function MembersTab({ members, groupAssessment, onSelectMember })
 
   const groupInsight = groupAssessment?.overview || null;
 
+  const q = searchQuery.toLowerCase().trim();
+  const filtered = q
+    ? members.filter((m) =>
+        `${m.firstName} ${m.lastInitial}`.toLowerCase().includes(q) ||
+        (m.employmentType || '').toLowerCase().includes(q)
+      )
+    : members;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       {groupInsight && (
         <AiCallout label="Group Composition">{groupInsight}</AiCallout>
       )}
 
-      <div className="breakdown-card people-list-card">
-        {members.map((m, i) => (
-          <PersonRow
-            key={m._id}
-            m={m}
-            i={i}
-            onClick={() => onSelectMember(m._id)}
-            allMembers={members}
+      {members.length > 1 && (
+        <div className="search-bar">
+          <svg className="search-bar-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+          <input
+            type="text"
+            placeholder="Search by name or employment type..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
           />
-        ))}
-      </div>
+          {q && <span className="search-bar-count">{filtered.length} of {members.length}</span>}
+          {q && <button className="search-bar-clear" onClick={() => setSearchQuery('')}>&times;</button>}
+        </div>
+      )}
+
+      {q && filtered.length === 0 ? (
+        <div className="search-empty-state">
+          <span>&#128269;</span>
+          <span>No results for &ldquo;{searchQuery}&rdquo;</span>
+        </div>
+      ) : (
+        <div className="breakdown-card people-list-card">
+          {filtered.map((m, i) => (
+            <PersonRow
+              key={m._id}
+              m={m}
+              i={i}
+              onNavigate={() => onSelectMember(m._id)}
+              allMembers={members}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
