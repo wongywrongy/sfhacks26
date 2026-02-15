@@ -10,7 +10,7 @@ import ReportTab from '../components/ReportTab';
 import SafetyTab from '../components/SafetyTab';
 import '../styles/dashboard.css';
 
-const TABS = ['People', 'Financials', 'Breakdown', 'Summary', 'Safety'];
+const TABS = ['People', 'Financials', 'Breakdown', 'Safety', 'Summary'];
 
 const STAGE_OPTIONS = [
   { value: 'empty', label: 'Empty', color: '#94a3b8' },

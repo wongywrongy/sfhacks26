@@ -121,6 +121,8 @@ async function pullCredit(memberData) {
     // Normalize the CRS Standard Format response
     const scoreObj = raw.scores?.[0];
     const score = scoreObj?.scoreValue ? Number(scoreObj.scoreValue) : null;
+    const scoreModel = scoreObj?.modelNameType || null;
+    const scoreSource = scoreObj?.sourceType || null;
 
     // Extract score factors (e.g. "Amount owed on accounts is too high")
     const scoreFactors = (scoreObj?.scoreFactors || []).map((f) => ({
@@ -178,6 +180,8 @@ async function pullCredit(memberData) {
       success: true,
       data: {
         score,
+        scoreModel,
+        scoreSource,
         scoreFactors,
         totalDebt,
         monthlyObligations,

@@ -145,12 +145,12 @@ export default function MemberProfile({ projectId, memberId, memberIndex = 0, on
                   label="Credit Score"
                   value={creditComplete ? member.credit.score ?? '—' : '—'}
                   valueColor={creditComplete && member.credit.score ? scoreColor(member.credit.score) : undefined}
-                  sub={creditComplete ? `${member.credit.paymentHistoryPercentage ?? '—'}% on-time` : undefined}
+                  sub={creditComplete ? `${member.credit.scoreModel === 'VantageScore4' ? 'VantageScore 4.0' : member.credit.scoreModel || 'VantageScore 4.0'} · ${member.credit.scoreSource || 'Experian'}` : undefined}
                 />
                 <MetricCard
                   label="Monthly Income"
                   value={fmt(member.monthlyIncome)}
-                  sub={member.employmentType}
+                  sub={member.jobTitle || member.employmentType}
                 />
                 <MetricCard
                   label="Monthly Debt"

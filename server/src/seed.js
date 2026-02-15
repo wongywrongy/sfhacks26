@@ -125,7 +125,7 @@ const DEALS = [
     members: [
       {
         firstName: 'Sam', lastName: 'Okafor', email: 'sam.okafor@demo.commonground.co',
-        monthlyIncome: 6800, employmentType: 'salaried',
+        monthlyIncome: 6800, employmentType: 'salaried', jobTitle: 'Software Engineer',
         orgStatus: 'approved',
         orgNotes: 'Software engineer. Strong income and excellent credit history.',
         dateSubmitted: new Date(Date.now() - 9 * DAY),
@@ -134,7 +134,7 @@ const DEALS = [
       },
       {
         firstName: 'Mei', lastName: 'Chen', email: 'mei.chen@demo.commonground.co',
-        monthlyIncome: 4500, employmentType: 'salaried',
+        monthlyIncome: 4500, employmentType: 'salaried', jobTitle: 'Marketing Coordinator',
         orgStatus: 'approved',
         orgNotes: 'Marketing coordinator. Stable salary and solid credit.',
         dateSubmitted: new Date(Date.now() - 8 * DAY),
@@ -143,7 +143,7 @@ const DEALS = [
       },
       {
         firstName: 'Tariq', lastName: 'Hassan', email: 'tariq.hassan@demo.commonground.co',
-        monthlyIncome: 5200, employmentType: 'government',
+        monthlyIncome: 5200, employmentType: 'government', jobTitle: 'Transit Supervisor',
         orgStatus: 'approved',
         orgNotes: 'Public transit supervisor. Unionized government position with steady income.',
         dateSubmitted: new Date(Date.now() - 7 * DAY),
@@ -165,7 +165,7 @@ const DEALS = [
     members: [
       {
         firstName: 'Alex', lastName: 'Torres', email: 'alex.torres@demo.commonground.co',
-        monthlyIncome: 3600, employmentType: 'freelance',
+        monthlyIncome: 3600, employmentType: 'freelance', jobTitle: 'Freelance Photographer',
         orgStatus: 'approved',
         orgNotes: 'Freelance photographer. Inconsistent income, background items flagged.',
         dateSubmitted: new Date(Date.now() - 6 * DAY),
@@ -174,7 +174,7 @@ const DEALS = [
       },
       {
         firstName: 'Gloria', lastName: 'Reyes', email: 'gloria.reyes@demo.commonground.co',
-        monthlyIncome: 3400, employmentType: 'gig',
+        monthlyIncome: 3400, employmentType: 'gig', jobTitle: 'Rideshare Driver',
         orgStatus: 'approved',
         orgNotes: 'Rideshare driver. Variable gig income, background concerns noted.',
         dateSubmitted: new Date(Date.now() - 5 * DAY),
@@ -183,7 +183,7 @@ const DEALS = [
       },
       {
         firstName: 'Marco', lastName: 'Delgado', email: 'marco.delgado@demo.commonground.co',
-        monthlyIncome: 2900, employmentType: 'gig',
+        monthlyIncome: 2900, employmentType: 'gig', jobTitle: 'Delivery Driver',
         orgStatus: 'approved',
         orgNotes: 'Food delivery + odd jobs. Irregular income stream, eviction history.',
         dateSubmitted: new Date(Date.now() - 4 * DAY),
@@ -205,7 +205,7 @@ const DEALS = [
     members: [
       {
         firstName: 'David', lastName: 'Park', email: 'david.park@demo.commonground.co',
-        monthlyIncome: 7200, employmentType: 'salaried',
+        monthlyIncome: 7200, employmentType: 'salaried', jobTitle: 'Product Manager',
         orgStatus: 'approved',
         orgNotes: 'Product manager at a tech company. Strong earner.',
         dateSubmitted: new Date(Date.now() - 7 * DAY),
@@ -214,7 +214,7 @@ const DEALS = [
       },
       {
         firstName: 'Priya', lastName: 'Sharma', email: 'priya.sharma@demo.commonground.co',
-        monthlyIncome: 5100, employmentType: 'government',
+        monthlyIncome: 5100, employmentType: 'government', jobTitle: 'City Planner',
         orgStatus: 'approved',
         orgNotes: 'City planning department. Stable government income.',
         dateSubmitted: new Date(Date.now() - 6 * DAY),
@@ -223,7 +223,7 @@ const DEALS = [
       },
       {
         firstName: 'Lena', lastName: 'Kowalski', email: 'lena.kowalski@demo.commonground.co',
-        monthlyIncome: 3900, employmentType: 'freelance',
+        monthlyIncome: 3900, employmentType: 'freelance', jobTitle: 'Graphic Designer',
         orgStatus: 'approved',
         orgNotes: 'Freelance graphic designer. Consistent client base, moderate income.',
         dateSubmitted: new Date(Date.now() - 5 * DAY),
@@ -245,7 +245,7 @@ const DEALS = [
     members: [
       {
         firstName: 'Keisha', lastName: 'Williams', email: 'keisha.williams@demo.commonground.co',
-        monthlyIncome: 4200, employmentType: 'salaried',
+        monthlyIncome: 4200, employmentType: 'salaried', jobTitle: 'Office Administrator',
         orgStatus: 'approved',
         orgNotes: 'Office administrator. Steady salaried income.',
         dateSubmitted: new Date(Date.now() - 4 * DAY),
@@ -254,7 +254,7 @@ const DEALS = [
       },
       {
         firstName: 'Andre', lastName: 'Johnson', email: 'andre.johnson@demo.commonground.co',
-        monthlyIncome: 2800, employmentType: 'gig',
+        monthlyIncome: 2800, employmentType: 'gig', jobTitle: 'Barista / DoorDash',
         orgStatus: 'approved',
         orgNotes: 'Part-time barista + DoorDash. Lower income but low debt.',
         dateSubmitted: new Date(Date.now() - 3 * DAY),
@@ -263,7 +263,7 @@ const DEALS = [
       },
       {
         firstName: 'Rosa', lastName: 'Medina', email: 'rosa.medina@demo.commonground.co',
-        monthlyIncome: 3500, employmentType: 'salary',
+        monthlyIncome: 3500, employmentType: 'salaried', jobTitle: 'Dental Hygienist',
         orgStatus: 'approved',
         orgNotes: 'Dental hygienist. Consistent salaried income with benefits.',
         dateSubmitted: new Date(Date.now() - 2 * DAY),
@@ -285,7 +285,7 @@ const DEALS = [
     members: [
       {
         firstName: 'Zara', lastName: 'Nguyen', email: 'zara.nguyen@demo.commonground.co',
-        monthlyIncome: 5800, employmentType: 'salaried',
+        monthlyIncome: 5800, employmentType: 'salaried', jobTitle: 'UX Designer',
         orgStatus: 'approved',
         orgNotes: 'UX designer at a mid-size agency. Strong salaried income.',
         dateSubmitted: new Date(Date.now() - 6 * DAY),
@@ -294,7 +294,7 @@ const DEALS = [
       },
       {
         firstName: 'Elijah', lastName: 'Foster', email: 'elijah.foster@demo.commonground.co',
-        monthlyIncome: 4600, employmentType: 'salaried',
+        monthlyIncome: 4600, employmentType: 'salaried', jobTitle: 'Staff Accountant',
         orgStatus: 'approved',
         orgNotes: 'Junior accountant. Reliable income with good credit habits.',
         dateSubmitted: new Date(Date.now() - 5 * DAY),
@@ -316,7 +316,7 @@ const DEALS = [
     members: [
       {
         firstName: 'Amara', lastName: 'Osei', email: 'amara.osei@demo.commonground.co',
-        monthlyIncome: 5500, employmentType: 'salaried',
+        monthlyIncome: 5500, employmentType: 'salaried', jobTitle: 'Registered Nurse',
         orgStatus: 'approved',
         orgNotes: 'Registered nurse at regional hospital. Steady income with overtime.',
         dateSubmitted: new Date(Date.now() - 3 * DAY),
@@ -325,7 +325,7 @@ const DEALS = [
       },
       {
         firstName: 'Carlos', lastName: 'Rivera', email: 'carlos.rivera@demo.commonground.co',
-        monthlyIncome: 4100, employmentType: 'salaried',
+        monthlyIncome: 4100, employmentType: 'salaried', jobTitle: 'Physical Therapy Asst.',
         orgStatus: 'approved',
         orgNotes: 'Physical therapy assistant. Consistent salaried income.',
         dateSubmitted: new Date(Date.now() - 2 * DAY),
@@ -347,7 +347,7 @@ const DEALS = [
     members: [
       {
         firstName: 'Ingrid', lastName: 'Svensson', email: 'ingrid.svensson@demo.commonground.co',
-        monthlyIncome: 5000, employmentType: 'government',
+        monthlyIncome: 5000, employmentType: 'government', jobTitle: 'High School Teacher',
         orgStatus: 'approved',
         orgNotes: 'High school science teacher. Stable government salary with pension.',
         dateSubmitted: new Date(Date.now() - 4 * DAY),
@@ -356,7 +356,7 @@ const DEALS = [
       },
       {
         firstName: 'Omar', lastName: 'Farah', email: 'omar.farah@demo.commonground.co',
-        monthlyIncome: 4800, employmentType: 'government',
+        monthlyIncome: 4800, employmentType: 'government', jobTitle: 'Adjunct Professor',
         orgStatus: 'approved',
         orgNotes: 'Community college adjunct professor. Government employment with benefits.',
         dateSubmitted: new Date(Date.now() - 3 * DAY),
@@ -365,7 +365,7 @@ const DEALS = [
       },
       {
         firstName: 'Sophie', lastName: 'Laurent', email: 'sophie.laurent@demo.commonground.co',
-        monthlyIncome: 3600, employmentType: 'salaried',
+        monthlyIncome: 3600, employmentType: 'salaried', jobTitle: 'Program Coordinator',
         orgStatus: 'approved',
         orgNotes: 'After-school program coordinator. Consistent salaried role.',
         dateSubmitted: new Date(Date.now() - 2 * DAY),
@@ -387,7 +387,7 @@ const DEALS = [
     members: [
       {
         firstName: 'Nina', lastName: 'Vasquez', email: 'nina.vasquez@demo.commonground.co',
-        monthlyIncome: 3800, employmentType: 'retired',
+        monthlyIncome: 3800, employmentType: 'retired', jobTitle: 'Retired Principal',
         orgStatus: 'approved',
         orgNotes: 'Retired school principal. Pension + Social Security. Excellent credit history.',
         dateSubmitted: new Date(Date.now() - 12 * DAY),
@@ -396,7 +396,7 @@ const DEALS = [
       },
       {
         firstName: 'Jaylen', lastName: 'Brooks', email: 'jaylen.brooks@demo.commonground.co',
-        monthlyIncome: 5400, employmentType: 'government',
+        monthlyIncome: 5400, employmentType: 'government', jobTitle: 'Public School Teacher',
         orgStatus: 'approved',
         orgNotes: 'Public school teacher. Union position with steady salary and benefits.',
         dateSubmitted: new Date(Date.now() - 11 * DAY),
@@ -405,7 +405,7 @@ const DEALS = [
       },
       {
         firstName: 'Dion', lastName: 'Carter', email: 'dion.carter@demo.commonground.co',
-        monthlyIncome: 4100, employmentType: 'salaried',
+        monthlyIncome: 4100, employmentType: 'salaried', jobTitle: 'Pharmacy Technician',
         orgStatus: 'approved',
         orgNotes: 'Hospital pharmacy technician. Reliable salaried income with overtime.',
         dateSubmitted: new Date(Date.now() - 10 * DAY),
@@ -445,6 +445,7 @@ async function pullMemberCrsData(memberDef) {
     zip: memberDef.creditPersona.zip,
     monthlyIncome: memberDef.monthlyIncome,
     employmentType: memberDef.employmentType,
+    jobTitle: memberDef.jobTitle || null,
     orgStatus: memberDef.orgStatus,
     orgNotes: memberDef.orgNotes,
     dateSubmitted: memberDef.dateSubmitted,
@@ -765,6 +766,7 @@ async function generateApplicantReports(db, projectId, project, contributions, i
       memberId: m._id.toString(),
       memberName: m.firstName,
       employmentType: m.employmentType,
+      jobTitle: m.jobTitle || null,
       status: result.success ? targetStatus : 'failed',
       reportData: result.success ? result.data : null,
       reportToken: crypto.randomUUID(),

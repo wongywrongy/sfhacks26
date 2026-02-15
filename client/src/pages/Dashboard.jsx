@@ -478,7 +478,7 @@ function BuildingCard({ building, expanded, onToggle, onNavigate, onCreateDeal }
           <path d="M9 18l6-6-6-6" />
         </svg>
         {!expanded && (
-          <div style={{ display: 'flex', flexDirection: 'column', flexWrap: 'wrap', alignItems: 'flex-start', gap: 3, flexShrink: 0, marginLeft: 4, maxHeight: 42 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 3, flexShrink: 0, marginLeft: 4 }}>
             {uniqueStages.map((s) => {
               const count = dealStages.filter((ds) => ds === s).length;
               return (
