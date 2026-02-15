@@ -148,7 +148,7 @@ function PersonRow({ m, i, onNavigate, allMembers }) {
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--text-muted)' }}>
               <EmploymentIcon type={m.employmentType} />
-              <span>{m.employmentType}</span>
+              <span>{m.jobTitle || m.employmentType}</span>
             </div>
           </div>
         </div>

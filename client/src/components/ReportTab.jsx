@@ -75,7 +75,7 @@ function ReportRow({ r, index, projectId, onUpdate, onPreview }) {
             <span style={{ fontSize: 13, fontWeight: 700 }}>{r.memberName}</span>
             <span className="people-status-pill" style={{ color: cfg.color, background: cfg.bg }}>{cfg.label}</span>
           </div>
-          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{r.employmentType}</div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{r.jobTitle || r.employmentType}</div>
         </div>
       </div>
       <div className="report-row-actions">
