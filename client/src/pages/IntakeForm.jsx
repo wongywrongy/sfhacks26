@@ -332,15 +332,11 @@ export default function IntakeForm() {
           </div>
 
           <button
-            type="submit"
+            type="button"
             className="submit-btn"
-            disabled={phase === 'submitting'}
+            onClick={() => alert('Disabled for public use')}
           >
-            {phase === 'submitting' ? (
-              <span className="spinner-wrap"><span className="spinner" /> Submitting&hellip;</span>
-            ) : (
-              'Submit Info'
-            )}
+            Submit Info
           </button>
         </form>
       </div>

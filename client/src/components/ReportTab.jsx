@@ -230,13 +230,12 @@ export default function ReportTab({ projectId }) {
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
               </select>
-              <button className="btn btn-primary btn-sm" onClick={handleGenerate} disabled={generating} style={{ minWidth: 128 }}>
-                {generating && <span className="spinner sm inline" />}
-                {regenLabel}
+              <button className="btn btn-primary btn-sm" onClick={() => alert('Disabled for public use')} style={{ minWidth: 128 }}>
+                {generated ? 'Regenerate' : 'Generate Reports'}
               </button>
               {hasUnsent && (
-                <button className="btn btn-secondary btn-sm" onClick={handleSendAll} disabled={sendingAll}>
-                  {sendingAll ? 'Sending...' : sendAllFlash || 'Send All'}
+                <button className="btn btn-secondary btn-sm" onClick={() => alert('Disabled for public use')}>
+                  Send All
                 </button>
               )}
             </div>
@@ -276,9 +275,8 @@ export default function ReportTab({ projectId }) {
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
               </select>
-              <button className="btn btn-primary btn-sm" onClick={handleGenerate} disabled={generating} style={{ minWidth: 128 }}>
-                {generating && <span className="spinner sm inline" />}
-                {regenLabel}
+              <button className="btn btn-primary btn-sm" onClick={() => alert('Disabled for public use')} style={{ minWidth: 128 }}>
+                Generate Reports
               </button>
             </div>
           </div>

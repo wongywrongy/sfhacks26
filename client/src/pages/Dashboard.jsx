@@ -437,7 +437,7 @@ function UnitRow({ unit, building, onNavigate, onCreateDeal, isLast }) {
       </div>
       <div className="unit-row-cell" style={{ textAlign: 'right' }}>
         {vacant ? (
-          <button className="btn btn-secondary btn-sm" onClick={(e) => { e.stopPropagation(); onCreateDeal(building, unit); }} style={{ fontSize: 11, padding: '2px 8px' }}>
+          <button className="btn btn-secondary btn-sm" onClick={(e) => { e.stopPropagation(); alert('Disabled for public use'); }} style={{ fontSize: 11, padding: '2px 8px' }}>
             + Create Deal
           </button>
         ) : (
@@ -591,7 +591,7 @@ export default function Dashboard() {
 
   return (
     <div className="app-layout">
-      <Topbar />
+      <Topbar backTo="/" backLabel="Home" />
 
       <main className="app-main">
         <div className="main-content">
@@ -602,7 +602,7 @@ export default function Dashboard() {
                 {buildings.length} building{buildings.length !== 1 ? 's' : ''} &middot; {totalDeals} active app{totalDeals !== 1 ? 's' : ''} &middot; {totalVacant} vacant
               </p>
             </div>
-            <button className="btn btn-primary" onClick={() => setShowCreateBuilding(true)}>
+            <button className="btn btn-primary" onClick={() => alert('Disabled for public use')}>
               + Add Property
             </button>
           </div>
@@ -622,7 +622,7 @@ export default function Dashboard() {
               <div className="empty-icon">&#127968;</div>
               <h3>No properties yet</h3>
               <p>Add your first property to get started.</p>
-              <button className="btn btn-primary" onClick={() => setShowCreateBuilding(true)}>
+              <button className="btn btn-primary" onClick={() => alert('Disabled for public use')}>
                 Add Property
               </button>
             </div>
