@@ -332,15 +332,13 @@ export default function IntakeForm() {
           </div>
 
           <button
-            type="submit"
+            type="button"
             className="submit-btn"
-            disabled={phase === 'submitting'}
+            disabled
+            aria-disabled="true"
+            title="Submission is disabled in the public demo."
           >
-            {phase === 'submitting' ? (
-              <span className="spinner-wrap"><span className="spinner" /> Submitting&hellip;</span>
-            ) : (
-              'Submit Info'
-            )}
+            Submit info · demo only
           </button>
         </form>
       </div>

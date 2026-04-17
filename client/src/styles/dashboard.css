@@ -1,6 +1,6 @@
 /* =====================================================
    CommonGround — Dashboard Stylesheet
-   Aesthetic: Glass Morphism / Institutional Blue
+   Aesthetic: Editorial restraint (post-polish)
    ===================================================== */
 
 /* ==================== CSS Variables ==================== */
@@ -9,17 +9,19 @@
   /* Topbar */
   --topbar-height: 56px;
 
-  /* Glass */
-  --glass-bg: rgba(255, 255, 255, 0.38);
-  --glass-blur: blur(48px) saturate(1.8);
-  --glass-border: 1px solid rgba(255, 255, 255, 0.7);
-  --glass-shadow: 0 8px 32px rgba(37, 99, 235, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.8);
-  --glass-radius: 16px;
+  /* Surface aliases — retired glass tokens now point at flat surfaces.
+     Keeping the legacy names so existing component rules below keep working
+     without a surgical rewrite. */
+  --glass-bg: var(--surface-card);
+  --glass-blur: none;
+  --glass-border: 1px solid var(--border-hairline);
+  --glass-shadow: var(--shadow-card);
+  --glass-radius: var(--radius-card);
 
-  --subglass-bg: rgba(255, 255, 255, 0.28);
-  --subglass-blur: blur(24px) saturate(1.4);
-  --subglass-border: 1px solid rgba(255, 255, 255, 0.55);
-  --subglass-radius: 12px;
+  --subglass-bg: var(--surface-sunken);
+  --subglass-blur: none;
+  --subglass-border: 1px solid var(--border-hairline-inset);
+  --subglass-radius: var(--radius-card-inner);
 
   /* Primary */
   --primary: #2563eb;
@@ -56,6 +58,54 @@
   --z-overlay: 200;
   --z-panel: 201;
   --z-modal: 300;
+}
+
+/* Global neutralizer: any component that still declares
+   `backdrop-filter: var(--glass-blur)` now effectively gets `none`.
+   Any hardcoded hover transforms are tamed below.
+   This is a lightweight polish pass — don't rewrite every rule. */
+[class*="glass"],
+.topbar,
+.landing-nav,
+.project-card,
+.member-card,
+.metric-card,
+.analytics-section,
+.profile-panel,
+.profile-overlay,
+.tab-pills,
+.meta-item,
+.ai-unavailable,
+.btn-secondary,
+.btn-outline,
+.check-pending-banner,
+.org-notes,
+.tradelines-table th {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.project-card:hover,
+.member-card:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: var(--shadow-card-hover) !important;
+}
+
+.project-card,
+.member-card,
+.metric-card,
+.analytics-section {
+  animation: none !important;
+}
+
+.profile-overlay {
+  background: rgba(24, 24, 27, 0.28) !important;
+}
+
+.profile-panel {
+  background: var(--surface-elevated) !important;
+  border-left: 1px solid var(--border-hairline) !important;
+  box-shadow: var(--shadow-elevated) !important;
 }
 
 /* ==================== Animations ==================== */
@@ -124,12 +174,11 @@
   left: 0;
   right: 0;
   height: var(--topbar-height);
-  background: rgba(255, 255, 255, 0.55);
-  backdrop-filter: blur(48px) saturate(1.8);
-  -webkit-backdrop-filter: blur(48px) saturate(1.8);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.7);
+  background: rgba(250, 249, 247, 0.92);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border-hairline);
   z-index: var(--z-topbar);
-  box-shadow: 0 1px 12px rgba(37, 99, 235, 0.04);
 }
 
 .topbar-inner {
@@ -208,24 +257,54 @@
 .topbar-org {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
-  background: rgba(37, 99, 235, 0.05);
-  border-radius: 6px;
+  gap: 8px;
+  padding: 4px 10px 4px 4px;
+  background: var(--surface-card);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-button);
 }
 
-.topbar-org-dot {
-  width: 7px;
-  height: 7px;
-  background: var(--primary);
-  border-radius: 50%;
+.topbar-org-mono {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  background: #2563eb;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  border-radius: 4px;
   flex-shrink: 0;
 }
 
 .topbar-org-label {
-  font-size: 12px;
-  color: var(--text-secondary);
+  font-size: 12.5px;
+  color: #27272A;
   font-weight: 500;
+  letter-spacing: -0.005em;
+}
+
+.topbar-demo-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: #FFF8EC;
+  color: #92400E;
+  border: 1px solid #F3E1BB;
+  border-radius: var(--radius-pill);
+  font-size: 11.5px;
+  font-weight: 500;
+}
+
+.topbar-demo-dot {
+  width: 6px;
+  height: 6px;
+  background: #D97706;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 
 /* ==================== Page Header ==================== */
@@ -658,12 +737,19 @@
 .meta-item {
   font-size: 12px;
   color: var(--text-secondary);
-  padding: 3px 8px;
-  background: var(--subglass-bg);
-  backdrop-filter: var(--subglass-blur);
-  border: var(--subglass-border);
-  border-radius: 6px;
+  padding: 3px 9px;
+  background: var(--surface-card);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-pill);
   font-weight: 500;
+}
+
+.meta-item--code {
+  font-family: ui-monospace, SFMono-Regular, 'JetBrains Mono', Menlo, monospace;
+  font-size: 11.5px;
+  background: var(--surface-sunken);
+  color: #52525B;
+  letter-spacing: 0.01em;
 }
 
 /* ==================== Members Tab ==================== */
@@ -1103,6 +1189,61 @@
   outline: none;
   border-color: var(--primary);
   background: rgba(255, 255, 255, 0.5);
+}
+
+/* Verification section */
+.overlay-verif-row {
+  display: grid;
+  grid-template-columns: 84px 1fr;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border-hairline-inset);
+  align-items: flex-start;
+}
+.overlay-verif-row:last-child { border-bottom: 0; }
+
+.overlay-verif-label {
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  padding-top: 2px;
+  font-weight: 500;
+}
+
+.overlay-verif-val {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.overlay-verif-pill {
+  align-self: flex-start;
+  display: inline-flex;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 5px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.overlay-verif-pill.verif-ok {
+  background: rgba(22, 163, 74, 0.08);
+  color: #15803D;
+  border: 1px solid rgba(22, 163, 74, 0.2);
+}
+
+.overlay-verif-pill.verif-warn {
+  background: rgba(217, 119, 6, 0.08);
+  color: #B45309;
+  border: 1px solid rgba(217, 119, 6, 0.2);
+}
+
+.overlay-verif-meta {
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  line-height: 1.45;
+  word-break: break-word;
 }
 
 /* ==================== Analytics Tab ==================== */

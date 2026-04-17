@@ -58,19 +58,22 @@ function getOverallStatus(m) {
     m.identityStatus === 'complete';
 
   if (m.orgStatus === 'ineligible')
-    return { label: 'Declined', color: '#dc2626', bg: 'rgba(220, 38, 38, 0.08)' };
+    return { label: 'Ineligible', color: '#b91c1c', bg: 'rgba(220, 38, 38, 0.08)' };
+
+  if (m.orgStatus === 'conditional')
+    return { label: 'Conditional', color: '#b45309', bg: 'rgba(217, 119, 6, 0.08)' };
 
   if (!allComplete)
-    return { label: 'Pending', color: '#ca8a04', bg: 'rgba(202, 138, 4, 0.08)' };
+    return { label: 'Pending', color: '#b45309', bg: 'rgba(217, 119, 6, 0.08)' };
 
   if (
     m.criminalRecordCount > 0 ||
     m.evictionRecordCount > 0 ||
     (m.creditScore != null && m.creditScore < 580)
   )
-    return { label: 'Flagged', color: '#dc2626', bg: 'rgba(220, 38, 38, 0.08)' };
+    return { label: 'Under review', color: '#b91c1c', bg: 'rgba(220, 38, 38, 0.08)' };
 
-  return { label: 'Cleared', color: '#16a34a', bg: 'rgba(22, 163, 74, 0.08)' };
+  return { label: 'Approved', color: '#15803d', bg: 'rgba(22, 163, 74, 0.08)' };
 }
 
 function generateRiskInsight(m, allMembers) {
@@ -282,7 +285,7 @@ export default function MembersTab({ members, groupAssessment, onSelectMember })
           ))}
           {groupInsight && (
             <div style={{ padding: '8px 14px 12px' }}>
-              <AiCallout label="Group Composition">{groupInsight}</AiCallout>
+              <AiCallout label="Household overview">{groupInsight}</AiCallout>
             </div>
           )}
         </div>

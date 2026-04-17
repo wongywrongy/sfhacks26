@@ -5,7 +5,8 @@ const MEMBER_COLORS = ['#2563eb', '#3b82f6', '#7c3aed', '#6366f1', '#1d4ed8'];
 
 const ORG_STATUSES = [
   { value: 'approved', label: 'Approved', bg: 'var(--success-bg)', color: 'var(--success)', border: 'rgba(22,163,74,0.2)' },
-  { value: 'flagged', label: 'Flagged', bg: 'var(--warning-bg)', color: 'var(--warning)', border: 'rgba(217,119,6,0.2)' },
+  { value: 'conditional', label: 'Conditional', bg: 'rgba(217,119,6,0.08)', color: '#b45309', border: 'rgba(217,119,6,0.24)' },
+  { value: 'flagged', label: 'Under review', bg: 'var(--warning-bg)', color: 'var(--warning)', border: 'rgba(217,119,6,0.2)' },
   { value: 'ineligible', label: 'Ineligible', bg: 'var(--error-bg)', color: 'var(--error)', border: 'rgba(220,38,38,0.2)' },
 ];
 
@@ -176,22 +177,22 @@ export default function MemberProfile({ projectId, memberId, memberIndex = 0, on
                 <div>
                   {creditComplete ? (
                     <div className="overlay-section">
-                      <div className="overlay-section-title">Credit Report</div>
+                      <div className="overlay-section-title">Credit report</div>
                       <div className="overlay-kv-list">
                         <div className="overlay-kv-row">
-                          <span>Payment History</span>
+                          <span>On-time payment history (24mo)</span>
                           <span className="overlay-kv-val">{member.credit.paymentHistoryPercentage ?? 'N/A'}%</span>
                         </div>
                         <div className="overlay-kv-row">
-                          <span>Open Tradelines</span>
+                          <span>Active tradelines</span>
                           <span className="overlay-kv-val">{member.credit.openTradelinesCount}</span>
                         </div>
                         <div className="overlay-kv-row">
-                          <span>Disposable Income</span>
+                          <span>Residual monthly income</span>
                           <span className="overlay-kv-val">{member.disposableIncome != null ? fmt(member.disposableIncome) : 'N/A'}</span>
                         </div>
                         <div className="overlay-kv-row">
-                          <span>Delinquencies</span>
+                          <span>Delinquencies (24mo)</span>
                           <span>
                             {member.credit.delinquencyCount > 0 ? (
                               <button
@@ -225,7 +226,7 @@ export default function MemberProfile({ projectId, memberId, memberIndex = 0, on
                         )}
 
                         <div className="overlay-kv-row">
-                          <span>Public Records</span>
+                          <span>Public records (7yr)</span>
                           <span className={member.credit.publicRecordsCount > 0 ? 'overlay-kv-val-alert' : 'overlay-kv-val'}>
                             {member.credit.publicRecordsCount}
                           </span>
@@ -234,7 +235,7 @@ export default function MemberProfile({ projectId, memberId, memberIndex = 0, on
                     </div>
                   ) : (
                     <div className="overlay-section">
-                      <div className="overlay-section-title">Credit Report</div>
+                      <div className="overlay-section-title">Credit report</div>
                       <div className={member.credit?.status === 'failed' ? 'check-failed-banner' : 'check-pending-banner'}>
                         {member.credit?.status === 'failed' ? `Credit pull failed${member.credit.error ? `: ${member.credit.error}` : ''}` : <><div className="spinner sm" /> Processing...</>}
                       </div>
@@ -333,15 +334,57 @@ export default function MemberProfile({ projectId, memberId, memberIndex = 0, on
                   )}
                 </div>
 
-                {/* Right: Background + Status + Notes */}
+                {/* Right: Verification + Background + Status + Notes */}
                 <div>
+                  {member.verification && (
+                    <>
+                      <div className="overlay-section">
+                        <div className="overlay-section-title">Verification</div>
+                        <div className="overlay-kv-list">
+                          <div className="overlay-verif-row">
+                            <div className="overlay-verif-label">Employment</div>
+                            <div className="overlay-verif-val">
+                              <span className={`overlay-verif-pill ${member.verification.employment.verified ? 'verif-ok' : 'verif-warn'}`}>
+                                {member.verification.employment.verified ? 'Verified' : 'Self-declared'}
+                              </span>
+                              <span className="overlay-verif-meta">
+                                via {member.verification.employment.source} · {member.verification.employment.employer} · {member.verification.employment.type} · {member.verification.employment.tenure} tenure
+                              </span>
+                            </div>
+                          </div>
+                          <div className="overlay-verif-row">
+                            <div className="overlay-verif-label">Income</div>
+                            <div className="overlay-verif-val">
+                              <span className={`overlay-verif-pill ${member.verification.income.verified ? 'verif-ok' : 'verif-warn'}`}>
+                                {member.verification.income.verified ? 'Verified' : 'Pending'}
+                              </span>
+                              <span className="overlay-verif-meta">${member.verification.income.gross?.toLocaleString()}/mo gross · {member.verification.income.evidence}</span>
+                            </div>
+                          </div>
+                          <div className="overlay-verif-row">
+                            <div className="overlay-verif-label">Identity</div>
+                            <div className="overlay-verif-val">
+                              <span className={`overlay-verif-pill ${member.verification.identity.cvi >= 60 ? 'verif-ok' : 'verif-warn'}`}>
+                                CVI {member.verification.identity.cvi}/100
+                              </span>
+                              <span className="overlay-verif-meta">
+                                {member.verification.identity.source} · SSN {member.verification.identity.ssnMatch ? 'match' : 'mismatch'} · DOB {member.verification.identity.dobMatch ? 'match' : 'mismatch'}
+                                {member.verification.identity.addressMismatch ? ' · Address mismatch flagged' : ''}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="overlay-divider" />
+                    </>
+                  )}
                   <div className="overlay-section">
-                    <div className="overlay-section-title">Background Screening</div>
+                    <div className="overlay-section-title">Background screening</div>
                     <div className="overlay-bg-checks">
                       {/* Criminal */}
                       <div className="overlay-bg-card">
                         <div className="overlay-bg-card-row">
-                          <span className="overlay-bg-card-label">Criminal Records</span>
+                          <span className="overlay-bg-card-label">Criminal records</span>
                           {member.criminal?.status === 'complete' ? (
                             (member.criminal.records || []).length === 0 ? (
                               <span className="overlay-bg-clear">
@@ -363,7 +406,7 @@ export default function MemberProfile({ projectId, memberId, memberIndex = 0, on
                       {/* Eviction */}
                       <div className="overlay-bg-card">
                         <div className="overlay-bg-card-row">
-                          <span className="overlay-bg-card-label">Eviction Records</span>
+                          <span className="overlay-bg-card-label">Eviction records</span>
                           {member.eviction?.status === 'complete' ? (
                             (member.eviction.records || []).length === 0 ? (
                               <span className="overlay-bg-clear">
@@ -385,7 +428,7 @@ export default function MemberProfile({ projectId, memberId, memberIndex = 0, on
                       {/* Identity CVI */}
                       <div className="overlay-bg-card overlay-cvi-card">
                         <div className="overlay-bg-card-row">
-                          <span className="overlay-bg-card-label">Identity Verification</span>
+                          <span className="overlay-bg-card-label">Identity verification</span>
                           {cviScore != null ? (
                             <span className="overlay-cvi-inline" style={{ color: cviColor(cviScore) }}>
                               {cviLabel(cviScore)}
@@ -438,20 +481,24 @@ export default function MemberProfile({ projectId, memberId, memberIndex = 0, on
                   <div className="overlay-divider" />
 
                   <div className="overlay-section">
-                    <div className="overlay-section-title">Notes</div>
+                    <div className="overlay-section-title">Underwriter notes</div>
                     <textarea
                       className="overlay-notes"
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}
-                      placeholder="Internal notes about this applicant..."
+                      placeholder="Internal notes. Saved to the deal file and included on the Deal memo."
                       rows={5}
                     />
-                    <button
-                      className="btn btn-secondary btn-sm"
-                      onClick={() => handleStatusChange(member.orgStatus)}
-                      disabled={updating}
-                      style={{ marginTop: 6 }}
-                    >{updating ? 'Saving...' : 'Save Notes'}</button>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 6, gap: 8 }}>
+                      <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                        Notes are timestamped with the current underwriter (K. Arellano).
+                      </span>
+                      <button
+                        className="ui-btn ui-btn--secondary ui-btn--sm"
+                        onClick={() => handleStatusChange(member.orgStatus)}
+                        disabled={updating}
+                      >{updating ? 'Saving...' : 'Save notes'}</button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -459,11 +506,11 @@ export default function MemberProfile({ projectId, memberId, memberIndex = 0, on
               {/* AI Assessment */}
               {aiText && (
                 <div style={{ marginTop: 8, gridColumn: '1 / -1' }}>
-                  <AiCallout label="Assessment">{aiText}</AiCallout>
+                  <AiCallout label="Underwriter assessment">{aiText}</AiCallout>
                 </div>
               )}
               {!aiText && creditComplete && (
-                <div style={{ fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic', gridColumn: '1 / -1' }}>AI assessment temporarily unavailable</div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic', gridColumn: '1 / -1' }}>Underwriter narrative unavailable</div>
               )}
             </>
           )}

@@ -1,16 +1,26 @@
 import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { api } from '../api';
+import { generateDealMemo } from '../services/dealMemoPdf';
+import PdfViewerModal from './PdfViewerModal';
 
 const MEMBER_COLORS = ['#2563eb', '#3b82f6', '#7c3aed', '#6366f1', '#1d4ed8'];
 
 const MODEL_KEYS = ['equal', 'proportional', 'hybrid'];
-const MODEL_NAMES = { equal: 'Even Split', proportional: 'Income-Based', hybrid: 'Balanced' };
-const MODEL_DESC = { equal: 'Same dollar amount', proportional: 'Same % of income', hybrid: '50/50 blend' };
+const MODEL_NAMES = {
+  equal: 'Equal allocation',
+  proportional: 'Pro-rata (income-weighted)',
+  hybrid: 'Hybrid (50/50)',
+};
+const MODEL_DESC = {
+  equal: 'Same dollar amount',
+  proportional: 'Same % of income',
+  hybrid: 'Equal and pro-rata blend',
+};
 const MODEL_TOOLTIPS = {
-  equal: 'Total monthly cost divided equally among all applicants. Everyone pays the same dollar amount regardless of income.',
-  proportional: 'Each person pays in proportion to their share of the group\u2019s total income. Higher earners pay more in dollars, but everyone pays the same percentage of their income toward housing.',
-  hybrid: 'Half the total cost is split equally, half is split by income proportion. Combines shared baseline responsibility with income-sensitive fairness.',
+  equal: 'Total monthly rent divided equally among co-applicants. Each contributes the same dollar amount regardless of income. Simple but regressive against lower earners.',
+  proportional: 'Each applicant contributes in proportion to their share of aggregate income. Housing burden equalizes as a percent of income. The method most commonly referenced in multi-tenant lease addenda.',
+  hybrid: 'Half of total rent is split equally, half is split pro-rata. Preserves baseline joint responsibility while responding to income disparity. Operator-default for most households.',
 };
 
 function ModelsHelpTooltip() {
@@ -65,7 +75,7 @@ function ModelsHelpTooltip() {
       {MODEL_KEYS.map((k) => (
         <div key={k}>
           <span style={{ fontWeight: 700, color: 'var(--primary)' }}>{MODEL_NAMES[k]}</span>
-          <span style={{ color: 'var(--text-secondary)' }}> — {MODEL_TOOLTIPS[k]}</span>
+          <span style={{ color: 'var(--text-secondary)' }}>: {MODEL_TOOLTIPS[k]}</span>
         </div>
       ))}
     </div>,
@@ -166,6 +176,28 @@ function Checkbox({ checked, color }) {
   );
 }
 
+function buildAllocationAddendum({ project, members, model, activeModel }) {
+  if (!model || !project) return null;
+  const rows = model.members.map((m) => ({
+    name: m.displayName,
+    income: m.monthlyIncome || 0,
+    amount: m.paymentAmount || 0,
+    pct: m.percentageOfIncome || 0,
+    residual: m.breathingRoom || 0,
+  }));
+  const includedMembers = members.filter((mm) =>
+    rows.some((r) => r.name.startsWith(mm.firstName))
+  );
+  return generateDealMemo({
+    project,
+    members: includedMembers.length ? includedMembers : members,
+    allocationRows: rows,
+    allocationModelLabel: MODEL_NAMES[activeModel],
+    recommendation: `Allocation addendum · ${MODEL_NAMES[activeModel]}`,
+    mode: 'addendum',
+  });
+}
+
 function AiCallout({ label, children }) {
   if (!children) return null;
   return (
@@ -181,12 +213,13 @@ function AiCallout({ label, children }) {
   );
 }
 
-export default function ContributionsTab({ projectId, members, estimatedMonthlyCost }) {
+export default function ContributionsTab({ projectId, members, estimatedMonthlyCost, project }) {
   const [contributions, setContributions] = useState(null);
   const [excludeIds, setExcludeIds] = useState([]);
   const [activeModel, setActiveModel] = useState('hybrid');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [pdfPreview, setPdfPreview] = useState(null);
 
   const eligibleMembers = members.filter(
     (m) => m.orgStatus === 'approved' && m.creditStatus === 'complete'
@@ -303,6 +336,17 @@ export default function ContributionsTab({ projectId, members, estimatedMonthlyC
             >{MODEL_NAMES[key]}</button>
           ))}
           <ModelsHelpTooltip />
+          <button
+            className="ui-btn ui-btn--secondary ui-btn--sm"
+            style={{ marginLeft: 8 }}
+            onClick={() => {
+              const pdf = buildAllocationAddendum({ project, members, model, activeModel });
+              if (pdf) setPdfPreview(pdf);
+            }}
+            disabled={!model}
+          >
+            Export allocation
+          </button>
         </div>
       </div>
 
@@ -351,7 +395,7 @@ export default function ContributionsTab({ projectId, members, estimatedMonthlyC
         {/* AI: DISTRIBUTION */}
         {distributionText && (
           <div style={{ marginTop: 8 }}>
-            <AiCallout label="Distribution">{distributionText}</AiCallout>
+            <AiCallout label="Distribution analysis">{distributionText}</AiCallout>
           </div>
         )}
       </div>
@@ -359,11 +403,11 @@ export default function ContributionsTab({ projectId, members, estimatedMonthlyC
       {/* PER-PERSON BREAKDOWN */}
       <div className={`breakdown-card breakdown-persons-card${loading ? ' section-loading' : ''}`}>
         <div className="breakdown-persons-header">
-          <span style={{ fontWeight: 800, fontSize: 14, letterSpacing: '-0.02em' }}>Per-Person Breakdown</span>
+          <span style={{ fontWeight: 800, fontSize: 14, letterSpacing: '-0.02em' }}>Per-applicant allocation</span>
           <div className="breakdown-bar-legend">
-            <span><span className="breakdown-legend-dot" style={{ background: '#f87171' }} />Debt</span>
-            <span><span className="breakdown-legend-dot" style={{ background: '#60a5fa' }} />Housing</span>
-            <span><span className="breakdown-legend-dot" style={{ background: '#4ade80' }} />Room</span>
+            <span><span className="breakdown-legend-dot" style={{ background: '#f87171' }} />Debt service</span>
+            <span><span className="breakdown-legend-dot" style={{ background: '#60a5fa' }} />Housing allocation</span>
+            <span><span className="breakdown-legend-dot" style={{ background: '#4ade80' }} />Post-allocation residual</span>
           </div>
         </div>
 
@@ -421,14 +465,14 @@ export default function ContributionsTab({ projectId, members, estimatedMonthlyC
         {/* AI: AFFORDABILITY */}
         {affordabilityText && (
           <div style={{ marginTop: 8 }}>
-            <AiCallout label="Affordability">{affordabilityText}</AiCallout>
+            <AiCallout label="Residual-income review">{affordabilityText}</AiCallout>
           </div>
         )}
       </div>
 
       {/* ALL MODELS TABLE — full width */}
       <div className="breakdown-card breakdown-glance-card">
-        <div style={{ fontWeight: 800, fontSize: 14, letterSpacing: '-0.02em', marginBottom: 8 }}>All Models</div>
+        <div style={{ fontWeight: 800, fontSize: 14, letterSpacing: '-0.02em', marginBottom: 8 }}>Allocation comparison</div>
         <table className="breakdown-glance-table">
           <thead>
             <tr>
@@ -478,10 +522,18 @@ export default function ContributionsTab({ projectId, members, estimatedMonthlyC
         </table>
         {recommendationText && (
           <div style={{ marginTop: 8 }}>
-            <AiCallout label="Recommendation">{recommendationText}</AiCallout>
+            <AiCallout label="Underwriter recommendation">{recommendationText}</AiCallout>
           </div>
         )}
       </div>
+      {pdfPreview && (
+        <PdfViewerModal
+          url={pdfPreview.url}
+          filename={pdfPreview.filename}
+          title={`Allocation addendum · ${project?.name || ''}`}
+          onClose={() => setPdfPreview(null)}
+        />
+      )}
     </div>
   );
 }

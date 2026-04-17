@@ -1,0 +1,401 @@
+/* =====================================================
+   CommonGround — Design Tokens
+   Anthropic-inspired editorial restraint.
+   Semantic palette preserved from hackathon build.
+   ===================================================== */
+
+:root {
+  /* ---------- Surfaces ---------- */
+  --surface-page: #FAF9F7;           /* warm neutral page background */
+  --surface-band: #F5F3EE;           /* sub-page band (deal header strip) */
+  --surface-card: #FFFFFF;           /* primary card fill */
+  --surface-sunken: #FAFAF7;         /* sub-card / inset fill */
+  --surface-elevated: #FFFFFF;       /* modal / panel fill */
+
+  --border-hairline: #EAE8E3;        /* default card border */
+  --border-hairline-strong: #DDDAD3; /* emphasized divider */
+  --border-hairline-inset: #F0EEE9;  /* inner sub-divider */
+
+  --shadow-card: 0 1px 2px rgba(24, 24, 27, 0.04);
+  --shadow-card-hover: 0 2px 6px rgba(24, 24, 27, 0.06);
+  --shadow-elevated: 0 12px 32px rgba(24, 24, 27, 0.08);
+
+  --radius-card: 12px;
+  --radius-card-inner: 10px;
+  --radius-pill: 6px;
+  --radius-button: 8px;
+
+  /* ---------- Display typography ---------- */
+  /* Fraunces: variable opsz axis gives a wider, less-condensed silhouette
+     at display sizes. We ride it hard via font-variation-settings on
+     actual heading elements below. */
+  --font-serif: 'Fraunces', 'Source Serif 4', Georgia, serif;
+  --font-sans: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* Display-size tuning — Fraunces reads narrow at default opsz; push it
+   toward the wider display cut for anything using .ui-serif or raw serif
+   headings above 28px. */
+h1, h2, .ui-serif, .ui-serif-tight, .landing-h1, .landing-h2,
+.landing-footer-title, .landing-builtfor-text,
+.deal-memo h1, .deal-memo h2 {
+  font-variation-settings: 'opsz' 96, 'SOFT' 50, 'WONK' 0;
+}
+
+/* ==================== Surface primitives ==================== */
+
+.ui-card {
+  background: var(--surface-card);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+}
+
+.ui-card-subtle {
+  background: var(--surface-card);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-card-inner);
+}
+
+.ui-card-sunken {
+  background: var(--surface-sunken);
+  border: 1px solid var(--border-hairline-inset);
+  border-radius: var(--radius-card-inner);
+}
+
+.ui-hairline {
+  height: 1px;
+  background: var(--border-hairline);
+  border: 0;
+}
+
+/* ==================== Pills (semantic, flat) ==================== */
+
+.ui-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-sans);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  line-height: 1.3;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.ui-pill--neutral {
+  background: #F4F2EE;
+  color: #3F3F46;
+  border-color: #E8E5DF;
+}
+
+.ui-pill--info {
+  background: rgba(37, 99, 235, 0.08);
+  color: #1D4ED8;
+  border-color: rgba(37, 99, 235, 0.18);
+}
+
+.ui-pill--approved {
+  background: rgba(22, 163, 74, 0.08);
+  color: #15803D;
+  border-color: rgba(22, 163, 74, 0.22);
+}
+
+.ui-pill--conditional {
+  background: rgba(217, 119, 6, 0.08);
+  color: #B45309;
+  border-color: rgba(217, 119, 6, 0.24);
+}
+
+.ui-pill--review {
+  background: rgba(37, 99, 235, 0.08);
+  color: #1D4ED8;
+  border-color: rgba(37, 99, 235, 0.22);
+}
+
+.ui-pill--ineligible,
+.ui-pill--flagged {
+  background: rgba(220, 38, 38, 0.08);
+  color: #B91C1C;
+  border-color: rgba(220, 38, 38, 0.22);
+}
+
+.ui-pill--warning {
+  background: rgba(217, 119, 6, 0.08);
+  color: #B45309;
+  border-color: rgba(217, 119, 6, 0.24);
+}
+
+.ui-pill--success {
+  background: rgba(22, 163, 74, 0.08);
+  color: #15803D;
+  border-color: rgba(22, 163, 74, 0.22);
+}
+
+.ui-pill--demo {
+  background: #FFF8EC;
+  color: #92400E;
+  border-color: #F7E6C4;
+}
+
+.ui-pill--dot::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.8;
+}
+
+/* ==================== Buttons ==================== */
+
+.ui-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: var(--radius-button);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.ui-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ui-btn--primary {
+  background: #2563EB;
+  color: #fff;
+}
+
+.ui-btn--primary:hover:not(:disabled) {
+  background: #1D4ED8;
+}
+
+.ui-btn--secondary {
+  background: var(--surface-card);
+  color: var(--text-primary, #18181b);
+  border-color: var(--border-hairline);
+}
+
+.ui-btn--secondary:hover:not(:disabled) {
+  background: var(--surface-sunken);
+  border-color: var(--border-hairline-strong);
+}
+
+.ui-btn--ghost {
+  background: transparent;
+  color: var(--text-primary, #18181b);
+}
+
+.ui-btn--ghost:hover:not(:disabled) {
+  background: rgba(24, 24, 27, 0.04);
+}
+
+.ui-btn--sm {
+  padding: 5px 10px;
+  font-size: 12px;
+}
+
+.ui-btn--lg {
+  padding: 10px 18px;
+  font-size: 14px;
+}
+
+/* Split button pattern (primary + caret dropdown) */
+.ui-btn-split {
+  display: inline-flex;
+}
+
+.ui-btn-split > .ui-btn:first-child {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.ui-btn-split > .ui-btn:last-child {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  padding-left: 8px;
+  padding-right: 8px;
+  border-left: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.ui-btn-split > .ui-btn--secondary:last-child {
+  border-left-color: var(--border-hairline);
+}
+
+/* ==================== Callout (narrative card) ==================== */
+
+.ui-callout {
+  position: relative;
+  padding: 14px 16px 14px 18px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border-hairline-inset);
+  border-left: 2px solid #CBD5E1;
+  border-radius: var(--radius-card-inner);
+  font-size: 13px;
+  line-height: 1.55;
+  color: #3F3F46;
+}
+
+.ui-callout--info { border-left-color: #2563EB; }
+.ui-callout--warning { border-left-color: #D97706; }
+.ui-callout--success { border-left-color: #16A34A; }
+.ui-callout--danger { border-left-color: #DC2626; }
+
+.ui-callout-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #71717A;
+  margin-bottom: 6px;
+}
+
+.ui-callout-label--info { color: #1D4ED8; }
+.ui-callout-label--warning { color: #B45309; }
+.ui-callout-label--success { color: #15803D; }
+.ui-callout-label--danger { color: #B91C1C; }
+
+.ui-callout-body {
+  font-family: var(--font-sans);
+  color: #3F3F46;
+}
+
+/* ==================== Skeletons ==================== */
+
+.ui-skeleton {
+  display: block;
+  background: linear-gradient(90deg, #F0EEE9 0%, #F6F4EF 50%, #F0EEE9 100%);
+  background-size: 200% 100%;
+  animation: ui-skeleton-shimmer 1.4s ease-in-out infinite;
+  border-radius: 6px;
+}
+
+@keyframes ui-skeleton-shimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+/* ==================== Display serif helpers ==================== */
+
+.ui-serif {
+  font-family: var(--font-serif);
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+
+.ui-serif-tight {
+  font-family: var(--font-serif);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+}
+
+/* ==================== Empty state ==================== */
+
+.ui-empty {
+  padding: 40px 24px;
+  text-align: center;
+  color: #71717A;
+  border: 1px dashed var(--border-hairline-strong);
+  border-radius: var(--radius-card);
+  background: var(--surface-sunken);
+}
+
+.ui-empty-title {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 600;
+  color: #27272A;
+  margin-bottom: 4px;
+}
+
+.ui-empty-body {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.5;
+  color: #71717A;
+  max-width: 360px;
+  margin: 0 auto 12px;
+}
+
+/* ==================== PDF viewer modal ==================== */
+
+.pdfviewer-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(24, 24, 27, 0.55);
+  z-index: 400;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  animation: pdfviewer-fade 0.15s ease-out;
+}
+
+@keyframes pdfviewer-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.pdfviewer-frame {
+  width: min(960px, 96vw);
+  height: min(920px, 92vh);
+  background: var(--surface-card);
+  border: 1px solid var(--border-hairline);
+  border-radius: 14px;
+  box-shadow: 0 20px 60px rgba(24, 24, 27, 0.18);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.pdfviewer-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border-hairline);
+  background: var(--surface-sunken);
+}
+
+.pdfviewer-title {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  color: #18181b;
+  letter-spacing: -0.005em;
+}
+
+.pdfviewer-actions {
+  display: inline-flex;
+  gap: 8px;
+}
+
+.pdfviewer-body {
+  flex: 1;
+  min-height: 0;
+  background: #1F1F23;
+}
+
+.pdfviewer-iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #fff;
+}

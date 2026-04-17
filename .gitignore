@@ -4,3 +4,7 @@ node_modules
 .env
 dist
 .vercel
+
+# Playwright MCP artifacts (snapshots, console logs, screenshots)
+.playwright-mcp/
+/*.png

@@ -10,7 +10,7 @@ import ReportTab from '../components/ReportTab';
 import SafetyTab from '../components/SafetyTab';
 import '../styles/dashboard.css';
 
-const TABS = ['People', 'Financials', 'Breakdown', 'Safety', 'Summary'];
+const TABS = ['People', 'Financials', 'Allocation', 'Safety', 'Deal memo'];
 
 const STAGE_OPTIONS = [
   { value: 'empty', label: 'Empty', color: '#94a3b8' },
@@ -64,10 +64,10 @@ export default function ProjectDetail() {
       actions={
         project?.intakeLinkToken ? (
           <button
-            className={`btn btn-sm ${copied ? 'btn-primary' : 'btn-secondary'}`}
+            className={`ui-btn ui-btn--sm ${copied ? 'ui-btn--primary' : 'ui-btn--secondary'}`}
             onClick={copyIntakeLink}
           >
-            {copied ? 'Copied!' : 'Copy Invite Link'}
+            {copied ? 'Copied' : 'Copy applicant link'}
           </button>
         ) : null
       }
@@ -133,9 +133,13 @@ export default function ProjectDetail() {
           <div className="project-detail-header">
             <div className="project-detail-top">
               <div className="project-detail-info">
-                <h2 className="page-title">{project.name}</h2>
+                <h2 className="page-title project-detail-title">{project.name}</h2>
                 <div className="project-meta">
+                  {project.referenceCode && (
+                    <span className="meta-item meta-item--code">{project.referenceCode}</span>
+                  )}
                   {locationStr && <span className="meta-item">{locationStr}</span>}
+                  {project.bedBath && <span className="meta-item">{project.bedBath}</span>}
                   {project.priceRange && (
                     <span className="meta-item">
                       ${project.priceRange.low?.toLocaleString()} &ndash; ${project.priceRange.high?.toLocaleString()}
@@ -200,15 +204,16 @@ export default function ProjectDetail() {
             {activeTab === 'Financials' && (
               <AnalyticsTab projectId={projectId} />
             )}
-            {activeTab === 'Breakdown' && (
+            {activeTab === 'Allocation' && (
               <ContributionsTab
                 projectId={projectId}
                 members={project.members || []}
                 estimatedMonthlyCost={project.estimatedMonthlyCost}
+                project={project}
               />
             )}
-            {activeTab === 'Summary' && (
-              <ReportTab projectId={projectId} />
+            {activeTab === 'Deal memo' && (
+              <ReportTab projectId={projectId} project={project} />
             )}
             {activeTab === 'Safety' && (
               <SafetyTab projectId={projectId} />

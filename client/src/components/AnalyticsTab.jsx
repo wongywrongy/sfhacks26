@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { api } from '../api';
+import { RESILIENCE_RECOMMENDATIONS } from '../data/insights';
 
 const MEMBER_COLORS = ['#2563eb', '#3b82f6', '#7c3aed', '#6366f1', '#1d4ed8'];
 
@@ -75,22 +76,28 @@ function DtiGauge({ value, classification }) {
   const barColor = classification === 'healthy' ? '#10b981' : classification === 'acceptable' ? '#f59e0b' : '#ef4444';
   return (
     <div style={{ marginBottom: 4 }}>
-      <div className="dti-bar-track" style={{ height: 10 }}>
+      <div className="dti-bar-track" style={{ height: 10, position: 'relative' }}>
         <div className="dti-bar-fill" style={{ width: `${(p / 60) * 100}%`, backgroundColor: barColor }} />
         <div className="dti-marker" style={{ left: '60%' }} />
         <div className="dti-marker dti-marker-warn" style={{ left: '71.7%' }} />
       </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-muted)', marginTop: 2, fontWeight: 500 }}>
-        <span>0%</span>
-        <span style={{ fontWeight: 600 }}>36%</span>
-        <span style={{ fontWeight: 600 }}>43%</span>
-        <span>60%</span>
+      <div style={{ position: 'relative', marginTop: 4, height: 28 }}>
+        <span style={{ position: 'absolute', left: '0%', fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>0%</span>
+        <span style={{ position: 'absolute', left: '60%', transform: 'translateX(-50%)', textAlign: 'center', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', whiteSpace: 'nowrap', lineHeight: 1.2 }}>
+          36%
+          <div style={{ fontSize: 9.5, fontWeight: 500, color: '#A1A1AA', marginTop: 1 }}>GSE front-end</div>
+        </span>
+        <span style={{ position: 'absolute', left: '71.7%', transform: 'translateX(-50%)', textAlign: 'center', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', whiteSpace: 'nowrap', lineHeight: 1.2 }}>
+          43%
+          <div style={{ fontSize: 9.5, fontWeight: 500, color: '#A1A1AA', marginTop: 1 }}>QM wall</div>
+        </span>
+        <span style={{ position: 'absolute', right: 0, fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>60%</span>
       </div>
     </div>
   );
 }
 
-function RiskAnalysis({ analytics, dependencyInsight, removedIds, setRemovedIds }) {
+function RiskAnalysis({ analytics, dependencyInsight, removedIds, setRemovedIds, projectId }) {
   const breakdown = analytics.memberBreakdown || [];
   const monthlyCost = analytics.estimatedMonthlyCost || 0;
   const totalIncome = analytics.combinedIncome;
@@ -122,10 +129,17 @@ function RiskAnalysis({ analytics, dependencyInsight, removedIds, setRemovedIds 
     return { removed, removedIncome, removedObligations, income: newIncome, debt: newDebt, dti: newDTI, room, fails };
   }, [removedIds, breakdown, totalIncome, totalDebt, monthlyCost]);
 
+  // Recommended action string when exactly one member is removed (common case)
+  let recommendation = null;
+  if (scenario && scenario.removed.length === 1 && projectId) {
+    const removedId = scenario.removed[0].memberId;
+    recommendation = RESILIENCE_RECOMMENDATIONS?.[projectId]?.[removedId] || null;
+  }
+
   return (
     <div className="breakdown-card" style={{ padding: '12px 14px', flex: 1.6, minHeight: 220 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-        <span style={{ fontWeight: 800, fontSize: 14, letterSpacing: '-0.02em' }}>Risk Analysis</span>
+        <span style={{ fontWeight: 800, fontSize: 14, letterSpacing: '-0.02em' }}>Departure scenarios</span>
       </div>
 
       {/* Compact inline checkboxes */}
@@ -195,7 +209,15 @@ function RiskAnalysis({ analytics, dependencyInsight, removedIds, setRemovedIds 
             </div>
           </div>
 
-          {dependencyInsight && <AiCallout label="Dependencies">{dependencyInsight}</AiCallout>}
+          {recommendation && (
+            <div style={{ marginTop: 8, padding: '10px 12px', border: '1px solid var(--border-hairline-inset)', borderLeft: '2px solid #D97706', borderRadius: 8, fontSize: 12.5, color: '#27272A', background: 'var(--surface-sunken)' }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#B45309', marginBottom: 4 }}>
+                Recommended action
+              </div>
+              {recommendation}
+            </div>
+          )}
+          {dependencyInsight && <AiCallout label="Dependency analysis">{dependencyInsight}</AiCallout>}
         </>
       )}
     </div>
@@ -213,7 +235,7 @@ function GroupComposition({ composition }) {
   return (
     <div className="breakdown-card" style={{ padding: '12px 14px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-        <span style={{ fontWeight: 800, fontSize: 14, letterSpacing: '-0.02em' }}>Credit Composition</span>
+        <span style={{ fontWeight: 800, fontSize: 14, letterSpacing: '-0.02em' }}>Household tradeline composition</span>
         <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 6, background: concStyle.bg, color: concStyle.color, border: `1px solid ${concStyle.border}` }}>
           {composition.debtConcentrationRisk} concentration
         </span>
@@ -244,7 +266,7 @@ function GroupComposition({ composition }) {
       {/* Summary stats */}
       <div style={{ display: 'flex', gap: 16, fontSize: 11, color: 'var(--text-secondary)' }}>
         <span>Dominant: <b style={{ textTransform: 'capitalize' }}>{composition.dominantGroupDebtType || 'N/A'}</b></span>
-        <span>High rev. util: <b style={{ color: composition.revolvingHeavyCount > 0 ? 'var(--error)' : 'var(--success)' }}>{composition.revolvingHeavyCount}/{composition.memberCount}</b> members</span>
+        <span>Revolving utilization above 30%: <b style={{ color: composition.revolvingHeavyCount > 0 ? 'var(--error)' : 'var(--success)' }}>{composition.revolvingHeavyCount} of {composition.memberCount}</b> applicants</span>
       </div>
     </div>
   );
@@ -308,12 +330,12 @@ export default function AnalyticsTab({ projectId }) {
       {/* STAT STRIP */}
       <div className="breakdown-card fin-stat-strip">
         {[
-          { label: 'Combined Income', value: `$${analytics.combinedIncome.toLocaleString()}` },
-          { label: 'Obligations', value: `$${analytics.combinedObligations.toLocaleString()}` },
-          { label: 'Total Debt', value: `$${analytics.combinedDebt.toLocaleString()}` },
-          { label: 'Buying Power', value: `$${analytics.estimatedLoanAmount.toLocaleString()}` },
-          { label: 'Max Payment', value: `$${analytics.maxMonthlyPayment.toLocaleString()}` },
-          { label: 'People Ready', value: analytics.memberCount },
+          { label: 'Aggregate gross monthly income', value: `$${analytics.combinedIncome.toLocaleString()}` },
+          { label: 'Recurring debt service', value: `$${analytics.combinedObligations.toLocaleString()}` },
+          { label: 'Outstanding balances', value: `$${analytics.combinedDebt.toLocaleString()}` },
+          { label: 'Supportable housing payment', value: `$${analytics.estimatedLoanAmount.toLocaleString()}` },
+          { label: 'Front-end cap (36% rule)', value: `$${analytics.maxMonthlyPayment.toLocaleString()}` },
+          { label: 'Qualified co-applicants', value: analytics.memberCount },
         ].map((s, i, arr) => (
           <div key={s.label} className="fin-stat-cell" style={i < arr.length - 1 ? { borderRight: '1px solid rgba(0,0,0,0.06)' } : undefined}>
             <span className="fin-stat-value">{s.value}</span>
@@ -325,7 +347,7 @@ export default function AnalyticsTab({ projectId }) {
       {/* DTI */}
       <div className="breakdown-card" style={{ padding: '10px 14px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-          <span style={{ fontWeight: 800, fontSize: 14, letterSpacing: '-0.02em' }}>Group DTI</span>
+          <span style={{ fontWeight: 800, fontSize: 14, letterSpacing: '-0.02em' }}>Aggregate front-end ratio</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontSize: 20, fontWeight: 900, letterSpacing: '-0.03em', fontVariantNumeric: 'tabular-nums', color: dtiColor(analytics.groupDTI) }}>
               {dtiPct}%
@@ -342,36 +364,39 @@ export default function AnalyticsTab({ projectId }) {
       {/* GROUP AFFORDABILITY */}
       <div className="breakdown-card" style={{ padding: '10px 14px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-          <span style={{ fontWeight: 800, fontSize: 14, letterSpacing: '-0.02em' }}>Group Affordability</span>
+          <span style={{ fontWeight: 800, fontSize: 14, letterSpacing: '-0.02em' }}>Household affordability</span>
           <div className="breakdown-bar-legend">
-            <span><span className="breakdown-legend-dot" style={{ background: '#f87171' }} />Debt</span>
-            <span><span className="breakdown-legend-dot" style={{ background: '#60a5fa' }} />Housing</span>
-            <span><span className="breakdown-legend-dot" style={{ background: '#4ade80' }} />Room</span>
+            <span><span className="breakdown-legend-dot" style={{ background: '#f87171' }} />Debt service</span>
+            <span><span className="breakdown-legend-dot" style={{ background: '#60a5fa' }} />Housing burden</span>
+            <span><span className="breakdown-legend-dot" style={{ background: '#4ade80' }} />Residual income</span>
           </div>
         </div>
         <AllocationBar income={totalIncome} debt={totalDebt} housing={monthlyCost} room={groupRoom} height={34} />
-        <div style={{ display: 'flex', gap: 14, marginTop: 4, fontSize: 11, color: 'var(--text-muted)' }}>
-          <span>{fmt(totalIncome)} income</span>
-          <span>{pctFmt(analytics.groupDTI)} DTI</span>
-          <span style={{ color: roomColor(groupRoom), fontWeight: 700 }}>{fmt(groupRoom)} room</span>
+        <div style={{ display: 'flex', gap: 14, marginTop: 6, fontSize: 11, color: 'var(--text-muted)', flexWrap: 'wrap', rowGap: 6 }}>
+          <span>{fmt(totalIncome)} aggregate income</span>
+          <span>{pctFmt(analytics.groupDTI)} front-end</span>
+          <span style={{ color: roomColor(groupRoom), fontWeight: 700 }}>{fmt(groupRoom)} residual</span>
+          <span style={{ color: groupRoom >= 1003 ? 'var(--success)' : 'var(--warning)', fontWeight: 500 }}>
+            VA residual ≥ $1,003 (family of 4): {groupRoom >= 1003 ? 'met' : 'not met'}
+          </span>
         </div>
-        {overviewInsight && <AiCallout label="Overview">{overviewInsight}</AiCallout>}
+        {overviewInsight && <AiCallout label="Underwriting overview">{overviewInsight}</AiCallout>}
       </div>
 
       {/* INCOME DIVERSITY + RISK ANALYSIS */}
       <div className="fin-row">
         <div className="breakdown-card" style={{ padding: '12px 14px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-            <span style={{ fontWeight: 800, fontSize: 14, letterSpacing: '-0.02em' }}>Income Diversity</span>
+            <span style={{ fontWeight: 800, fontSize: 14, letterSpacing: '-0.02em' }}>Income source concentration</span>
             <span style={{ fontSize: 20, fontWeight: 900, color: 'var(--primary)', letterSpacing: '-0.03em' }}>{analytics.incomeDiversityScore}</span>
             <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
-              {analytics.incomeDiversityScore >= 0.8 ? 'High — low correlated risk' : analytics.incomeDiversityScore >= 0.5 ? 'Moderate diversity' : 'Low — correlated risk'}
+              {analytics.incomeDiversityScore >= 0.8 ? 'Low concentration · diversified' : analytics.incomeDiversityScore >= 0.5 ? 'Moderate concentration' : 'High concentration · correlated risk'}
             </span>
           </div>
-          {diversityInsight && <AiCallout label="Diversity">{diversityInsight}</AiCallout>}
+          {diversityInsight && <AiCallout label="Concentration analysis">{diversityInsight}</AiCallout>}
         </div>
 
-        <RiskAnalysis analytics={analytics} dependencyInsight={dependencyInsight} removedIds={removedIds} setRemovedIds={setRemovedIds} />
+        <RiskAnalysis analytics={analytics} dependencyInsight={dependencyInsight} removedIds={removedIds} setRemovedIds={setRemovedIds} projectId={projectId} />
       </div>
 
       {/* CREDIT COMPOSITION */}
