@@ -134,8 +134,15 @@ function CriminalSection({ data }) {
           </div>
           <div style={{ display: 'flex', gap: 12, color: 'var(--text-muted)', fontSize: 11 }}>
             {r.jurisdiction && <span>{r.jurisdiction}</span>}
-            {r.recencyLabel && <span>{r.recencyLabel} — {r.recencyCategory}</span>}
+            {r.recencyLabel && <span>{r.recencyLabel} · {r.recencyCategory}</span>}
           </div>
+          {(r.nature || r.recency || r.severityLabel) && (
+            <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
+              {r.nature && <span className="ui-pill ui-pill--neutral"><b style={{ color: '#52525B', fontWeight: 600 }}>Nature:</b> {r.nature}</span>}
+              {r.recency && <span className="ui-pill ui-pill--neutral"><b style={{ color: '#52525B', fontWeight: 600 }}>Recency:</b> {r.recency}</span>}
+              {r.severityLabel && <span className="ui-pill ui-pill--neutral"><b style={{ color: '#52525B', fontWeight: 600 }}>Severity:</b> {r.severityLabel}</span>}
+            </div>
+          )}
         </div>
       ))}
     </div>
@@ -158,8 +165,15 @@ function EvictionSection({ data }) {
           </div>
           <div style={{ display: 'flex', gap: 12, color: 'var(--text-muted)', fontSize: 11 }}>
             {r.jurisdiction && <span>{r.jurisdiction}</span>}
-            {r.recencyLabel && <span>{r.recencyLabel} — {r.recencyCategory}</span>}
+            {r.recencyLabel && <span>{r.recencyLabel} · {r.recencyCategory}</span>}
           </div>
+          {(r.nature || r.recency || r.severityLabel) && (
+            <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
+              {r.nature && <span className="ui-pill ui-pill--neutral"><b style={{ color: '#52525B', fontWeight: 600 }}>Nature:</b> {r.nature}</span>}
+              {r.recency && <span className="ui-pill ui-pill--neutral"><b style={{ color: '#52525B', fontWeight: 600 }}>Recency:</b> {r.recency}</span>}
+              {r.severityLabel && <span className="ui-pill ui-pill--neutral"><b style={{ color: '#52525B', fontWeight: 600 }}>Severity:</b> {r.severityLabel}</span>}
+            </div>
+          )}
         </div>
       ))}
     </div>
@@ -233,7 +247,7 @@ function MemberCard({ member }) {
       </div>
 
       <CollapsibleSection
-        title={`Criminal Records${hasCrim ? ` (${member.criminalStructured.summary.totalRecords})` : ''}`}
+        title={`Criminal records${hasCrim ? ` (${member.criminalStructured.summary.totalRecords})` : ''}`}
         icon={<ShieldIcon color={SEVERITY_COLORS[crimSeverity]} />}
         defaultOpen={false}
       >
@@ -241,7 +255,7 @@ function MemberCard({ member }) {
       </CollapsibleSection>
 
       <CollapsibleSection
-        title={`Eviction Records${hasEvic ? ` (${member.evictionStructured.summary.totalFilings})` : ''}`}
+        title={`Eviction records${hasEvic ? ` (${member.evictionStructured.summary.totalFilings})` : ''}`}
         icon={<HomeIcon color={SEVERITY_COLORS[evicSeverity]} />}
         defaultOpen={false}
       >
@@ -249,7 +263,7 @@ function MemberCard({ member }) {
       </CollapsibleSection>
 
       <CollapsibleSection
-        title="Identity Verification"
+        title="Identity verification"
         icon={<FingerprintIcon color={VERIFICATION_COLORS[member.identityStructured?.verificationStatus || 'unknown']} />}
         defaultOpen={false}
       >
@@ -257,7 +271,7 @@ function MemberCard({ member }) {
       </CollapsibleSection>
 
       {member.aiSafetySummary?.summary && (
-        <AiCallout label="Safety Assessment">{member.aiSafetySummary.summary}</AiCallout>
+        <AiCallout label="Individualized assessment">{member.aiSafetySummary.summary}</AiCallout>
       )}
     </div>
   );
@@ -332,7 +346,7 @@ export default function SafetyTab({ projectId }) {
         </div>
         {data.aiSafetyOverview?.overview && (
           <div style={{ marginTop: 8 }}>
-            <AiCallout label="Group Safety Overview">{data.aiSafetyOverview.overview}</AiCallout>
+            <AiCallout label="Household safety review">{data.aiSafetyOverview.overview}</AiCallout>
           </div>
         )}
       </div>

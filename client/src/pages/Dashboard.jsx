@@ -280,24 +280,24 @@ function PortfolioStats({ buildings, unlinkedDeals, onNavigate, insights }) {
       <div className="portfolio-stats-row">
         <div className="portfolio-stat">
           <span className="portfolio-stat-value">${stats.revenue.toLocaleString()}</span>
-          <span className="portfolio-stat-label">Revenue</span>
+          <span className="portfolio-stat-label">Monthly rent roll</span>
         </div>
-        <StatWithDropdown label="Screened" rows={stats.screenedBreakdown} onNavigate={onNavigate} emptyText="No applicants yet">
+        <StatWithDropdown label="Screening coverage" rows={stats.screenedBreakdown} onNavigate={onNavigate} emptyText="No applicants yet">
           <span className="portfolio-stat-value" style={{ color: allScreened ? 'var(--success)' : 'var(--text-primary)' }}>
             {stats.screenedApplicants} of {stats.totalApplicants}
           </span>
         </StatWithDropdown>
-        <StatWithDropdown label="Active Apps" rows={stats.activeAppsBreakdown} onNavigate={onNavigate} emptyText="No active applications">
+        <StatWithDropdown label="Active applications" rows={stats.activeAppsBreakdown} onNavigate={onNavigate} emptyText="No active applications">
           <span className="portfolio-stat-value" style={{ color: stats.activeApps > 0 ? 'var(--primary)' : 'var(--text-primary)' }}>
             {stats.activeApps}
           </span>
         </StatWithDropdown>
-        <StatWithDropdown label="Vacant" rows={stats.vacantBreakdown} onNavigate={onNavigate} emptyText="No vacant units">
+        <StatWithDropdown label="Available units" rows={stats.vacantBreakdown} onNavigate={onNavigate} emptyText="No vacant units">
           <span className="portfolio-stat-value" style={{ color: stats.vacant > 0 ? 'var(--warning)' : 'var(--success)' }}>
             {stats.vacant}
           </span>
         </StatWithDropdown>
-        <StatWithDropdown label="Needs Attention" rows={stats.attentionBreakdown} onNavigate={onNavigate} emptyText="No issues found">
+        <StatWithDropdown label="Action items" rows={stats.attentionBreakdown} onNavigate={onNavigate} emptyText="No issues found">
           <span className="portfolio-stat-value" style={{ color: stats.attention > 0 ? 'var(--error)' : 'var(--text-primary)' }}>
             {stats.attention}
           </span>
@@ -312,7 +312,7 @@ function PortfolioStats({ buildings, unlinkedDeals, onNavigate, insights }) {
                   <circle cx="12" cy="12" r="10" />
                   <polyline points="12 6 12 12 16 14" />
                 </svg>
-                <span className="portfolio-insight-label">Recent Activity</span>
+                <span className="portfolio-insight-label">Portfolio digest</span>
               </div>
               <div className="portfolio-insight-text">{recentActivity}</div>
             </div>
@@ -331,9 +331,9 @@ function PortfolioStats({ buildings, unlinkedDeals, onNavigate, insights }) {
                   <line x1="12" y1="17" x2="12.01" y2="17" />
                 </svg>
               )}
-              <span className="portfolio-insight-label" style={{ color: noActions ? '#16a34a' : '#d97706' }}>Action Required</span>
+              <span className="portfolio-insight-label" style={{ color: noActions ? '#16a34a' : '#d97706' }}>Requires your attention</span>
             </div>
-            <div className="portfolio-insight-text">{noActions ? 'No actions required.' : actionRequired}</div>
+            <div className="portfolio-insight-text">{noActions ? 'No open items.' : actionRequired}</div>
           </div>
         </div>
       )}
@@ -437,9 +437,9 @@ function UnitRow({ unit, building, onNavigate, onCreateDeal, isLast }) {
       </div>
       <div className="unit-row-cell" style={{ textAlign: 'right' }}>
         {vacant ? (
-          <button className="btn btn-secondary btn-sm" onClick={(e) => { e.stopPropagation(); alert('Disabled for public use'); }} style={{ fontSize: 11, padding: '2px 8px' }}>
-            + Create Deal
-          </button>
+          <span style={{ fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic' }}>
+            Available · not listed
+          </span>
         ) : (
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round"><path d="M9 18l6-6-6-6" /></svg>
         )}
@@ -597,14 +597,12 @@ export default function Dashboard() {
         <div className="main-content">
           <div className="page-header">
             <div>
-              <h2 className="page-title">Properties</h2>
+              <h2 className="page-title">Portfolio overview</h2>
               <p className="page-subtitle">
-                {buildings.length} building{buildings.length !== 1 ? 's' : ''} &middot; {totalDeals} active app{totalDeals !== 1 ? 's' : ''} &middot; {totalVacant} vacant
+                {buildings.length} propert{buildings.length === 1 ? 'y' : 'ies'} &middot; {linkedDeals + totalVacant} unit{linkedDeals + totalVacant !== 1 ? 's' : ''} &middot; {linkedDeals} occupied &middot; {totalVacant} available &middot; updated 14 minutes ago
               </p>
             </div>
-            <button className="btn btn-primary" onClick={() => alert('Disabled for public use')}>
-              + Add Property
-            </button>
+            {/* + Add property is an operator-only action and is hidden in the public demo. */}
           </div>
 
           {loading ? (
@@ -618,13 +616,9 @@ export default function Dashboard() {
               <button className="btn btn-secondary btn-sm" onClick={loadOverview} style={{ marginTop: 12 }}>Retry</button>
             </div>
           ) : buildings.length === 0 && unlinkedDeals.length === 0 ? (
-            <div className="empty-state">
-              <div className="empty-icon">&#127968;</div>
-              <h3>No properties yet</h3>
-              <p>Add your first property to get started.</p>
-              <button className="btn btn-primary" onClick={() => alert('Disabled for public use')}>
-                Add Property
-              </button>
+            <div className="ui-empty">
+              <div className="ui-empty-title">Sample portfolio unavailable</div>
+              <div className="ui-empty-body">The demo data did not load. Refresh the page to retry.</div>
             </div>
           ) : (
             <>

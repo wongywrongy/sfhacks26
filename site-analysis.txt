@@ -1,0 +1,366 @@
+================================================================================
+CommonGround — Site Walkthrough Analysis
+URL: https://breakingcommonground.tech/
+Reviewed: 2026-04-16 (SFHacks 2026 project, public demo)
+================================================================================
+
+
+0. THESIS OF THE PRODUCT
+--------------------------------------------------------------------------------
+CommonGround is a property-manager-facing screening platform that evaluates
+groups of co-applicants as a single financial unit rather than screening each
+applicant individually. The pitch, driven home on every surface of the site, is
+that traditional per-applicant 3x-rent thresholds reject qualified tenants by
+ignoring combined income, income diversity, and group resilience. Every
+interaction in the app is designed to make that alternative framing tangible.
+
+The flow is: Landing → Dashboard (portfolio) → Property (units) → Deal/Group
+(the core screening workspace) → Applicant profile (modal drill-in).
+
+
+================================================================================
+1. LANDING PAGE  ( / )
+================================================================================
+
+LAYOUT (top to bottom)
+  • Sticky light-glass nav: left logo "CommonGround", right "Explore Prototype"
+    CTA (blue pill).
+  • Hero: oversized two-line headline "Screen housing groups, not just
+    individuals." Supporting paragraph sells the core insight in one breath
+    ("Traditional screening rejects qualified people..."). Primary CTA
+    "Explore the Prototype" in matching royal-blue pill.
+  • Side-by-side comparison card (VS): the signature visual of the pitch.
+      Left  = "Individual Screening" — applicant Creed B., red ✕ rows, rejected
+      Right = "Group Screening" — Dunder Mifflin Commons, three green ✓ rows,
+              approved. 31% DTI, 5.5x coverage, uncorrelated income.
+      Caption: "Same person. Same unit. Different answer because the analysis
+      changed."
+  • "What the platform does" feature grid, 3x2:
+      Group Screening · Smart Rent Splitting · Resilience Analysis
+      Background Safety · AI Summaries · Applicant Reports
+    Each card: small blue-tinted icon tile + H3 + ~40-word description.
+  • Tech stack line: React · Express · MongoDB · Gemini AI (centered,
+    faint separators).
+  • Closing CTA block + footer strip: "CommonGround" left, "SFHacks 2026"
+    right (blue).
+
+DESIGN INTENTION
+  • The entire landing is built around one rhetorical move: show the SAME
+    applicant (Creed B.) rejected alone and approved in a group. The VS card
+    is deliberately symmetrical so the viewer's eye bounces between the red
+    ✕ column and the green ✓ column. The explanation under it ("Same person.
+    Same unit.") lands the thesis without requiring the reader to think.
+  • Palette: soft indigo/periwinkle gradient background, pure-white rounded
+    cards, single saturated blue for CTAs and brand accents, semantic green
+    for approvals and red for rejections. It reads as fintech-adjacent without
+    feeling cold — the softness of the wash humanizes a topic (tenant denial)
+    that is often adversarial.
+  • Typography: very large display headline + short line-length body copy.
+    Prioritizes scanability for property managers who will not read paragraphs.
+  • The feature grid intentionally skips hero imagery and sticks to flat icon
+    tiles, which keeps the page fast and makes the demo feel like the "real
+    thing," not a marketing skin.
+  • "SFHacks 2026" in the footer is a candid signal that this is a hackathon
+    build — the product intentionally does not pretend to be shipped SaaS.
+
+
+================================================================================
+2. DASHBOARD  ( /dashboard )
+================================================================================
+
+Top-level view for a property manager's portfolio. Route is shared by list +
+expanded-unit table.
+
+HEADER (persistent across authed app)
+  • Left: CommonGround logo + contextual back link (e.g. "< Home",
+    "< Properties").
+  • Right: "Copy Invite Link" button (only on deal pages) and org pill
+    "org-001" with a blue dot — placeholder tenant identity.
+
+PAGE BODY
+  • Title row: H2 "Properties" + subtitle "3 buildings · 3 active apps · 4
+    vacant". Right-aligned "+ Add Property" CTA.
+  • KPI strip (5 tiles, horizontal): Revenue $13,600 | 12 of 12 Screened |
+    2 Active Apps | 4 Vacant | 3 Needs Attention. Each tile ends in a "?"
+    question-mark chip that opens a hover popover with a per-unit breakdown
+    (e.g. Screened tile shows "Schrute Farms Unit 1 — 4 of 4", etc.).
+    Numbers are color-coded: green for healthy, blue for informational,
+    amber for vacant, red for "needs attention".
+  • Two-column narrative panel below the KPIs:
+      - "Recent Activity" (left, blue clock icon) — AI-generated rolling
+        summary of portfolio state.
+      - "Action Required" (right, amber warning icon) — prescriptive list of
+        the decisions the manager actually owes.
+  • Full-width search input.
+  • Property list, one row per building:
+      TYPE BADGE (HOUSE / APARTMENT / CONDO) | Name + address + chevron
+      | Stage pill (In Progress / Review / Approved, color-matched)
+      | Units / Active / Vacant / Revenue stats.
+    Clicking a row expands the same card in place, revealing a unit-level
+    sub-table with: Unit | Applicants | DTI (bar + %) | Credit | Stage
+    | Activity (date).
+  • Vacant units show "-- -- -- -- Vacant" and a "+ Create Deal" CTA on the
+    right — the only place that implies the deal-creation flow.
+
+DESIGN INTENTION
+  • The dashboard is a "one glance, whole portfolio" surface. The KPI strip
+    is the highest-priority layer because a property manager's first question
+    every morning is "what needs me today" — the Needs Attention tile is
+    colored red for exactly this reason.
+  • The two narrative panels (Recent Activity / Action Required) are AI
+    summaries, not feeds. This is a deliberate design choice: rather than
+    showing raw event logs, Gemini condenses portfolio state into two
+    paragraphs a human can read in 10 seconds. It mirrors an executive brief,
+    not a ticketing system.
+  • Expanding a property in-place (instead of navigating away) keeps the
+    manager oriented across multiple buildings. Only drilling into a specific
+    UNIT commits to a deal-scope page.
+  • The property list's visual rhythm — type badge on the left, stage pill
+    in the middle, numbers on the right — is the same rhythm used on the
+    unit table below. That repetition is doing the heavy lifting of
+    "information architecture" without any sidebars.
+  • Status pills use hue not shape: amber "In Progress", blue "Review",
+    green "Approved", grey "Vacant". This matches the semantic language
+    used on the deal pages so state is consistent between levels.
+
+
+================================================================================
+3. DEAL / GROUP SCREENING WORKSPACE  ( /dashboard/project/:id )
+================================================================================
+
+This is the core product. Each deal (unit + applicant group) is a tabbed
+workspace. The header is fixed; the five tabs are the whole navigation model.
+
+HEADER
+  • H2 property name (e.g. "Dunder Mifflin Commons",
+    "Lackawanna Lofts Collective"). The deal is named after the building,
+    not the applicants — reinforcing the "group" framing.
+  • Three metadata chips: city, property valuation range, rent.
+  • Stage selector dropdown: Empty / In Progress / Review / Approved. This is
+    where a manager advances the deal.
+  • Top-right: "Copy Invite Link" (sharable applicant-intake link).
+
+TAB BAR
+  People {count} · Financials · Breakdown · Safety · Summary
+  When any safety issue exists, a small amber dot appears on the Safety tab.
+
+--------------------------------------------------------------------------------
+3a. PEOPLE TAB — the applicant roster
+--------------------------------------------------------------------------------
+  • Search input (by name or employment type).
+  • Applicant rows: colored avatar with initial + name + status pill
+    (Cleared / Flagged) + employment subtitle + right-aligned income / credit
+    / debt numbers, each with a trend indicator (— stable, ▲ rising, ▼ falling).
+    A chevron on the right opens an inline expansion.
+  • Inline expansion: Credit 780 · 100% on-time | Background Clean |
+    Identity Verified, plus a "View full profile ›" link.
+  • Bottom card: "Group Composition" — an AI paragraph explaining the strength
+    and composition of this specific group (e.g. "three distinct employment
+    types with zero correlation risk").
+
+  Applicant detail modal ("View full profile"):
+    Five KPI tiles across the top: Credit Score (with bureau), Monthly
+    Income + role, Monthly Debt + DTI%, Total Outstanding + tradeline count,
+    Identity (CVI) /100 verified.
+    Left column: Credit Report breakdown (Payment History, Open Tradelines,
+    Disposable Income, Delinquencies, Public Records), trend line ("Stable
+    — 0 late in past 12mo vs 0 prior · 24mo window · high confidence"), and
+    a Credit Composition stacked bar (Revolving vs Installment) with
+    utilization.
+    Right column: Background Screening with Criminal / Eviction / Identity
+    sections (each collapsible; color-coded). Status buttons:
+    Approved / Flagged / Ineligible (manager decision). Notes textarea +
+    Save Notes.
+
+--------------------------------------------------------------------------------
+3b. FINANCIALS TAB — the group-level analytic
+--------------------------------------------------------------------------------
+  • Top KPI strip: Combined Income · Obligations · Total Debt · Buying Power
+    · Max Payment · People Ready.
+  • Group DTI gauge: thick horizontal bar with vertical tick marks at 36%
+    (caution) and 43% (lending wall), the group's number in green or red
+    depending on zone, and a Healthy/Caution pill. Below it an "Affordability"
+    blue callout with a Gemini paragraph explaining the math.
+  • Group Affordability stacked bar: Debt / Housing / Room split of total
+    income, with dollar labels on each segment, topped by legend pips and
+    an "Overview" callout comparing this group to all active deals.
+  • Bottom row, two panels:
+      - Income Diversity score (0–1) with "High / Moderate / Low — low-correlated
+        risk" label and a Diversity callout explaining the employment mix.
+      - Risk Analysis — a row of toggleable applicant chips ("Uncheck a member
+        to simulate their departure"). This is the Resilience Analysis feature.
+        Unchecking someone swaps in a "Without {Name}" panel: new stacked bar,
+        new DTI with delta (e.g. "46.8% DTI (+15.8%)"), new room with delta,
+        and a pass/fail stamp. A Dependencies callout explains which member
+        is load-bearing and why.
+  • Credit Composition: revolving vs installment stacked bar with
+    concentration pill (low/moderate/high) and "High rev. util: X/N members".
+
+--------------------------------------------------------------------------------
+3c. BREAKDOWN TAB — Smart Rent Splitting
+--------------------------------------------------------------------------------
+  • Top row: member-include checkbox chips on the left, model selector on the
+    right: Even Split / Income-Based / Balanced (with a "?" help icon).
+  • Selected model card: model name, subtitle ("50/50 blend"), total, and a
+    horizontal stacked bar where each segment is one person's share labeled
+    with their name, $ amount, and % of their income. A Distribution callout
+    explains the spread.
+  • Per-Person Breakdown: for each applicant, their full income is
+    represented as a three-color stacked bar (Debt / Housing / Room) with
+    $ labels inside each segment and "$X left" on the right. An Affordability
+    callout explains tightness and recommends a shared emergency fund.
+  • "All Models" comparison table: one row per person across the three models
+    with $, %, and $left columns; the currently selected model column is
+    highlighted. Footer row: Total $3,600 across all three models. A
+    Recommendation callout at the bottom justifies the default.
+
+--------------------------------------------------------------------------------
+3d. SAFETY TAB — background with compliance framing
+--------------------------------------------------------------------------------
+  • Yellow disclaimer banner at the top citing Fair Housing, FCRA, and HUD
+    guidance. Tells the manager screening data is informational and that
+    blanket rejections based on criminal history may violate HUD. This is
+    deliberately the FIRST thing on the Safety tab.
+  • Horizontal strip of compact applicant cards with three icons each —
+    shield (criminal), house (eviction), fingerprint (identity) — green when
+    clean, orange/amber when flagged. Gives an at-a-glance scan.
+  • For groups with any flags: "Group Safety Overview" card with an AI
+    narrative describing WHAT the issue is, whether it's material, and what
+    to evaluate (e.g. Ryan H. — 1 eviction, 1 dismissed misdemeanor, with
+    language about rehabilitation and trajectory).
+  • Search + per-applicant expandable cards (Criminal Records / Eviction
+    Records / Identity Verification). Counts appear next to each section
+    where records exist ("Criminal Records (1)"). A "Safety Assessment"
+    callout at the bottom of a flagged applicant gives the explicit risk
+    read.
+
+--------------------------------------------------------------------------------
+3e. SUMMARY TAB — report generation
+--------------------------------------------------------------------------------
+  • Minimal surface: split-model dropdown (Even / Income-Based / Balanced)
+    + "Generate Reports" button. Intended to emit one-click PDFs per
+    applicant (disabled in the public demo — click shows "Disabled for
+    public use").
+
+
+================================================================================
+4. TWO INTERACTION PATTERNS WORTH CALLING OUT
+================================================================================
+
+RESILIENCE SIMULATION
+  The Risk Analysis chip-toggle is the single most "demoable" interaction in
+  the product. Unchecking a member instantly:
+    1. recomputes Group DTI,
+    2. re-lays the Debt/Housing/Room stacked bar,
+    3. shows deltas vs the baseline (green "+/-$" or red "-$"),
+    4. stamps pass/fail ("46.8% Fails" when Stanley is removed from the
+       Dunder group).
+  The Dependencies callout below it names the load-bearing member and
+  explains margin. This is the feature that visually sells "group screening"
+  as a concept, because it makes the abstract "what if one person leaves"
+  stress-test into a 300 ms interaction.
+
+FLAGGED VS CLEARED BEHAVIOR
+  The app changes behavior when any applicant is flagged:
+    - Status pill on the person row flips red "Flagged".
+    - Safety tab gets an amber dot.
+    - Risk Analysis excludes flagged members from the simulation
+      (Lackawanna shows only 4 chips for 5 applicants; Ryan is omitted).
+    - The "People Ready" KPI drops accordingly (Lackawanna = 4, not 5).
+    - AI narratives explicitly address the tradeoff ("The group should
+      discuss whether Ryan's inclusion aligns with their risk tolerance.").
+  The design lets managers see the group BOTH with and without the
+  questionable member before committing — which is the whole point of
+  screening-as-a-group.
+
+
+================================================================================
+5. VISUAL / UX LANGUAGE (shared across the app)
+================================================================================
+
+  PALETTE
+    • Page background: soft radial indigo→periwinkle gradient that persists
+      across all authed pages. Communicates continuity and makes white cards
+      float.
+    • Surfaces: pure white rounded cards with very light inner borders and
+      subtle shadows.
+    • Primary action: saturated royal blue pill buttons.
+    • Semantic: green = cleared / approved / healthy, amber/orange = caution
+      / vacant / in-progress, red = flagged / rejected / fails, blue = info /
+      review / AI callouts, purple accent on breakdown bars (Installment,
+      Creed avatar).
+
+  TYPOGRAPHY
+    • Large display headings for pages, serif-free sans throughout, tabular
+      figures for $ amounts. Aggressive size contrast between top numbers
+      and the labels under them ("$19,900 / Combined Income").
+
+  COMPONENTS
+    • The repeating "blue-tinted callout" pattern (small icon + ALL-CAPS title
+      + narrative paragraph) is the single most reused pattern in the app.
+      Every tab ends with one. It's how Gemini output is made to feel
+      integrated rather than bolted on.
+    • Stacked horizontal bars are used for THREE different concepts
+      (affordability split, per-person rent allocation, credit composition),
+      which gives the product a visual signature.
+    • Status is always communicated with a pill, not a plain label. Color
+      + rounded shape makes state scannable from across the room.
+
+  MOTION
+    • Tab switches and in-place card expansions animate with short fades;
+      no page navigation for intra-deal moves. Resilience simulation
+      recomputes instantly.
+
+
+================================================================================
+6. DESIGN INTENT — WHY IT LOOKS THE WAY IT DOES
+================================================================================
+
+The product is a polemic wrapped in a property-manager tool. Every surface is
+tuned to make the case that group analysis is not just "nice" but the
+epistemically correct way to screen. The choices reinforce that thesis:
+
+  1. The landing's VS card, the People tab's Group Composition summary, and
+     the Financials tab's Resilience Analysis are the SAME argument told
+     three different ways: "judge the whole, not the part."
+
+  2. AI narratives ("Affordability", "Overview", "Diversity", "Dependencies",
+     "Group Safety Overview", "Recommendation") are everywhere — not to
+     decorate, but because group-level analysis is only useful if a human
+     can trust the numbers. The narrative layer exists to SHOW THE WORK.
+
+  3. The compliance banner on Safety (FCRA / HUD guidance) positions the
+     product as fair-housing-aware rather than a reject-o-matic. It's placed
+     above the data, not below it — a statement of priority.
+
+  4. Tenant-manager empathy cuts both ways: the flagged-member workflow
+     preserves the flagged applicant's visibility (their profile is still
+     fully viewable, their status still togglable Approved / Flagged /
+     Ineligible) rather than disappearing them from the group. This maps to
+     the product's policy stance: evaluate, don't automate rejection.
+
+  5. The prototype's playful data (Dunder Mifflin / Schrute Farms /
+     Lackawanna Lofts / WUPHF.com Founder) signals hackathon personality
+     while keeping the numbers plausible enough to carry the analytical
+     narrative. The "SFHacks 2026" footer is the one place the product
+     admits what it is.
+
+
+================================================================================
+7. TECH / STRUCTURE NOTES
+================================================================================
+
+  • Stack per landing page: React (frontend), Express (API), MongoDB (store),
+    Gemini AI (narrative layer).
+  • Routing is flat: /, /dashboard, /dashboard/project/:id (p1 Schrute,
+    p2 Lackawanna, p3 Dunder).
+  • "Copy Invite Link" implies applicant intake via shareable URL, though
+    the intake flow itself is not exposed in the public demo.
+  • "Generate Reports" is gated with a "Disabled for public use" alert —
+    confirming the static public deployment is intentional (branch: `static`,
+    per repo git state).
+
+
+================================================================================
+END OF ANALYSIS
+================================================================================

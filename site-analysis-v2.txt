@@ -1,0 +1,558 @@
+================================================================================
+CommonGround — Site Walkthrough Analysis (v2, post-polish)
+Local build: /Users/kylewong/Documents/Visual Studio/sfhacks26
+Reviewed: 2026-04-16 · Branch: static (working tree, pre-commit)
+Baseline artifact: site-analysis.txt (produced earlier this session, pre-rewrite)
+================================================================================
+
+
+0. THESIS OF THE PRODUCT — UPDATED
+--------------------------------------------------------------------------------
+The prior build read as a polemic: "Screen housing groups, not just individuals."
+CommonGround v2 reads as operational property-management software. The thesis
+has not changed — a household is still underwritten as a single financial unit —
+but the voice shifts from advocacy to operator:
+
+  • Copy everywhere uses PM / lending / real-estate vocabulary (rent roll,
+    aggregate DTI, front-end ratio, QM wall, residual income, allocation
+    addendum, deal memo, pro-rata, individualized assessment, trajectory).
+  • Every screen is paired to a deliverable — a document a PM would actually
+    produce, sign, or file. The Deal memo tab produces a real multi-page PDF.
+    The Allocation tab produces a signable lease addendum.
+  • Visual language moves from glass-morphism over a periwinkle gradient to
+    editorial restraint on a warm cream (#FAF9F7) surface, with serif display
+    type (Instrument Serif) on headlines and Outfit retained for UI.
+
+The app now looks like the sort of thing a boutique PM firm could show a
+prospect without apology.
+
+
+================================================================================
+1. LANDING PAGE  ( / )
+================================================================================
+
+VOICE SHIFT (before → after)
+  Headline:  "Screen housing groups, not just individuals."
+           → "Group applications, fully underwritten." (emphasis italic serif)
+  Subhead:   "Traditional screening rejects qualified people..."
+           → "...co-applicant households as a single financial unit — combined
+              DTI, income correlation, resilience modeling, and split allocation
+              — so you can fill units faster without relaxing standards."
+  Primary CTA:  "Explore the Prototype" → "View live demo"
+  Secondary:    (none) → "Request access" (mailto)
+
+VS CARD REFRAMED
+  The comparison still runs Creed B. alone (rejected) vs. Dunder Mifflin
+  Commons as a household (approved). Labels, rows, and caption rewritten:
+    • Left label:  "Individual Screening" → "Individual screening"
+    • Right label: "Group Screening"      → "Household underwriting"
+    • First pass row: "31% group DTI, well within healthy range"
+                  → "Aggregate DTI 31% — below 36% front-end threshold"
+    • Caption:  "Same person. Same unit. Different answer..."
+             → "Individual screening evaluates Creed against a 3× rent
+                threshold he can't clear alone. Household underwriting evaluates
+                the combined $19,900 monthly income against the same unit.
+                One vacancy avoided; one qualified household placed."
+
+FEATURE GRID (6 cards) — rewritten to deliverable framing
+  Group Screening       → Household underwriting
+  Smart Rent Splitting  → Allocation modeling (note: "Export as lease addendum")
+  Resilience Analysis   → Departure scenarios
+  Background Safety     → FCRA-aligned screening (cites HUD 2016)
+  AI Summaries          → Underwriter's narrative ("Attach to deal files")
+  Applicant Reports     → Lender-ready packets ("Suitable for lender or owner
+                          review")
+
+VISUAL CHANGES
+  • Hero: 150px top padding, max-width 820px. Display headline uses Instrument
+    Serif at clamp(40px, 6.2vw, 68px) weight 400 with -0.02em tracking and
+    italic accent on "fully underwritten." An eyebrow chip
+    ("HOUSEHOLD UNDERWRITING FOR PROPERTY MANAGERS") sits above with hairline
+    end-caps.
+  • CTA buttons flip from saturated blue with shadow-glow to a near-black
+    (#18181b) primary + hairline-outline secondary, matching Anthropic-style
+    restraint while preserving button affordance.
+  • VS card loses glass blur; cards are pure white with 1px hairline border
+    and low shadow. The decorative "vs" pill becomes a thin hairline with a
+    tiny inline "vs" on a surface-matching background.
+  • Feature grid loses the rounded glass tiles in favor of a flat editorial
+    6-cell table with 1px gridlines (top, bottom, and between cells). Icons
+    are 1.6-stroke outline, no fill tint.
+  • Tech stack row ("React · Express · MongoDB · Gemini AI") — REMOVED
+    (single clearest hackathon tell on the landing).
+  • Closing block replaced with:
+        Built for  ——  "Independent landlords, boutique property-management
+                       firms, and brokerages managing five to five hundred
+                       units."  (serif)
+  • Footer eyebrow: "SFHacks 2026" → "Built at SFHacks 2026" (muted, smaller).
+
+
+================================================================================
+2. DASHBOARD  ( /dashboard )
+================================================================================
+
+TOP BAR
+  • Org pill moved from "org-001" chip to a full business identity:
+        [SPG]  Scranton Property Group  ▾
+    (monogram tile + real name + decorative caret)
+  • NEW: "Demo · Sample data" pill sits to the left of the org — soft amber
+    (#FFF8EC / #92400E) with a dot. Replaces the apologetic implicit framing
+    with an industry-standard "this is a demo environment" convention.
+  • Back link "< Home" / "< Properties" retained.
+
+PAGE HEADER
+  • Title:    "Properties" → "Portfolio overview"
+  • Subtitle: "3 buildings · X active apps · Y vacant"
+           → "3 properties · N units · M occupied · K available
+              · updated 14 minutes ago"
+  • Add-property CTA: blue primary → hairline secondary ("+ Add property").
+
+KPI STRIP (5 tiles, all relabeled)
+  Revenue            → Monthly rent roll
+  Screened           → Screening coverage
+  Active Apps        → Active applications
+  Vacant             → Available units
+  Needs Attention    → Action items
+  (Tooltips + dropdown behaviors preserved — hover any tile to see the
+  per-unit breakdown.)
+
+NARRATIVE PANELS
+  Rename + voice rewrite:
+    "Recent Activity"  → "Portfolio digest"
+    "Action Required"  → "Requires your attention"
+
+  New PORTFOLIO DIGEST text:
+  "Screening completed overnight for the Dunder Mifflin Commons household;
+   aggregate DTI landed at 30.9%, within front-end guideline. The Lackawanna
+   Lofts Collective advanced to Review yesterday with one applicant pending
+   individualized-assessment decision. Schrute Farms Group continues intake
+   at 3 of 4 co-applicants cleared; Kevin M.'s 1099 earnings remain pending
+   verification."
+
+  New REQUIRES YOUR ATTENTION text (three items, each with verb + aging):
+  "Lackawanna Lofts Collective — status decision required on Ryan H.
+   (eviction judgment, 2 years recency). Held 2 days. · Schrute Farms Group —
+   income verification pending for Kevin M.'s 1099 earnings; blocks
+   advancement to Review. · Dunder Mifflin Commons — allocation addendum
+   unsigned; tenants awaiting lease execution."
+
+PROPERTY LIST ROWS / UNIT TABLE
+  • Rows retain expand-in-place behavior. Type badge on the left
+    (HOUSE / APARTMENT / CONDO), stage pill middle, unit stats right.
+  • Stage pills now use flat, hairline-bordered tokenized styles
+    (ui-pill--info / approved / under review / etc.) instead of saturated
+    translucent chips.
+  • Vacant unit row (was: "-- -- -- -- Vacant + Create Deal") now offers
+    two actions — "List unit" (ghost) and "Create deal" (secondary). The
+    "List unit" button opens an honest roadmap alert: "Marketing integration
+    — coming Q3 2026." Industry-standard roadmap-transparency move.
+  • Applicant count / DTI / credit / stage / activity columns unchanged in
+    structure; typography tightened for the new hairline aesthetic.
+
+
+================================================================================
+3. DEAL / GROUP WORKSPACE  ( /dashboard/project/:id )
+================================================================================
+
+HEADER — new unit metadata chips
+  Before: [City, State]  [$valuation range]  [$rent/mo]  [Stage select]
+  After:  [SPG-1725-04B] [Scranton, PA] [2BR / 1BA] [$valuation range]
+          [$3,600/mo]  [Stage select]
+    • `SPG-1725-04B` appears in a monospace code chip — the single highest-
+      leverage realism detail. Every project now carries a `referenceCode`
+      and `bedBath` field in data/projects.js.
+    • Project also carries a `stageHistory` array (multi-row audit trail)
+      ready to be surfaced as a tooltip in a follow-up commit.
+
+TAB BAR — renames
+  People · Financials · Breakdown · Safety · Summary
+                               ↓
+  People · Financials · Allocation · Safety · Deal memo
+
+COPY INVITE LINK BUTTON
+  "Copy Invite Link" → "Copy applicant link" (short-form, operator-voice).
+  Split-button expansion (Resend to all / Resend to specific / Revoke) is
+  scaffolded in the design plan but kept as a single button for Phase 1–3
+  scope; the single primary action is the most-used path.
+
+3a. PEOPLE TAB
+    • Status pill language aligned with underwriter vocabulary:
+        "Cleared"  → "Approved"
+        "Flagged"  → "Under review"
+        "Ineligible" unchanged
+      Plus a fourth state, "Conditional" (amber outline), added to the
+      MemberProfile selector — reflects real PM practice of approving with
+      conditions (guarantor, additional deposit).
+    • Group Composition callout → "Household overview"
+    • Applicant row subtext, chevron, and inline expansion preserved; the
+      trajectory arrows (▲ ▼ —) on credit score unchanged.
+
+    APPLICANT DETAIL MODAL ("View full profile"):
+    ──────────────────────────────────────────────
+    KPI tiles (Credit score · Monthly income · Monthly debt · Total
+    outstanding · Identity CVI) retained.
+
+    CREDIT REPORT — labels rewritten to bureau-standard phrasing:
+      Payment History      → On-time payment history (24mo)
+      Open Tradelines      → Active tradelines
+      Disposable Income    → Residual monthly income
+      Delinquencies        → Delinquencies (24mo)
+      Public Records       → Public records (7yr)
+
+    VERIFICATION SECTION — NEW, added between Credit report and Background.
+    Three rows per applicant:
+      Employment:  {Verified via The Work Number | Self-declared}
+                   · {Employer} · {Salaried/1099/Gov/Pension} · {tenure}
+      Income:      {Verified | Pending} · ${gross}/mo · {evidence doc}
+      Identity:    CVI {n}/100 · {source} · SSN match · DOB match
+                   · [Address mismatch flagged] (when applicable)
+    Pulled from a new VERIFICATION overlay in data/members.js keyed to each
+    of the 12 sample applicants. Every applicant now has realistic
+    third-party verification metadata (The Work Number, Lackawanna County HR,
+    SSA + Prudential Pension Desk, etc.).
+
+    STATUS BUTTONS: 3-way → 4-way (Approved / Conditional / Under review /
+    Ineligible).
+
+    NOTES FIELD: "Notes" → "Underwriter notes", with a muted line below
+    clarifying "Notes are timestamped with the current underwriter
+    (K. Arellano)." Button "Save Notes" → "Save notes".
+
+3b. FINANCIALS TAB — the biggest voice shift
+    KPI strip (6 tiles):
+      Combined Income   → Aggregate gross monthly income
+      Obligations       → Recurring debt service
+      Total Debt        → Outstanding balances
+      Buying Power      → Supportable housing payment
+      Max Payment       → Front-end cap (36% rule)
+      People Ready      → Qualified co-applicants
+
+    GROUP DTI → Aggregate front-end ratio. The 36% and 43% tick marks on
+    the gauge now carry labels:
+      "Front-end · GSE conforming"  (under the 36% tick)
+      "Back-end · QM wall"          (under the 43% tick)
+    These are real thresholds — FNMA/FHLMC conforming (36%), Qualified
+    Mortgage rule (43%). Labels are what earn the credibility.
+
+    AFFORDABILITY BAR segments:
+      Debt    → Debt service
+      Housing → Housing burden
+      Room    → Residual income
+    Plus a new appended line: "VA min residual ($1,003, family of 4):
+    threshold met" — VA residual-income tables are a real underwriting
+    benchmark; their presence signals the analysis is aware of the full
+    compliance-vs-ratios framework.
+
+    INCOME DIVERSITY → Income source concentration.
+    Narrative rewritten per-deal to tie back to the 36% front-end threshold
+    under single-member departure. E.g., p3 now reads:
+      "Three distinct employment types across three co-applicants (salaried,
+       government, pension) yield a 1.0 concentration score — the maximum
+       diversification observable. [...] Household remains above the 36%
+       front-end conforming threshold under the loss of any one
+       co-applicant."
+
+    DEPENDENCIES (RISK ANALYSIS) → "Departure scenarios".
+    When a member is unchecked:
+      • The existing "Without {Name}" panel renders (DTI delta, residual
+        delta, pass/fail stamp).
+      • NEW: A hairline-bordered amber callout appears with the label
+        "RECOMMENDED ACTION" containing a deal-and-member-specific
+        recommendation pulled from insights.js RESILIENCE_RECOMMENDATIONS.
+        Examples:
+          Dunder / Stanley → "Acceptable inside QM; front-end above
+                              conforming but no replacement required."
+          Schrute / Michael → "Require co-signer or replacement co-applicant
+                              — front-end breaches 43% QM wall without
+                              Michael."
+      • The surrounding dependency narrative is relabeled
+        "Dependency analysis".
+
+    CREDIT COMPOSITION:
+      "High rev. util: X/N members" → "Revolving utilization above 30%:
+       X of N applicants" (names the 30% benchmark explicitly).
+      Card title "Credit Composition" → "Household tradeline composition".
+
+3c. ALLOCATION TAB (formerly "Breakdown")
+    Model names rewritten to lease-addendum-standard vocabulary:
+      Even Split    → Equal allocation
+      Income-Based  → Pro-rata (income-weighted)
+      Balanced      → Hybrid (50/50)
+
+    Bar segments:
+      Debt     → Debt service
+      Housing  → Housing allocation
+      Room     → Post-allocation residual
+
+    Section titles:
+      "Per-Person Breakdown"  → "Per-applicant allocation"
+      "All Models"            → "Allocation comparison"
+      Callout "Distribution"  → "Distribution analysis"
+      Callout "Affordability" → "Residual-income review"
+      Callout "Recommendation"→ "Underwriter recommendation"
+
+    NEW: "Export allocation" button sits to the right of the model pills.
+    Clicking emits a signable Lease Allocation Addendum PDF via
+    /client/src/services/dealMemoPdf.js in `mode: 'addendum'`:
+      • Letterhead (Scranton Property Group · Internal use only)
+      • Unit · reference code · rent
+      • Recommendation line ("Allocation addendum · {Model name}")
+      • Allocation table (name · gross income · allocation · % of income
+        · residual) with a Total row
+      • Acknowledgement paragraph on joint-and-several liability
+      • Signature lines per included applicant with a Date column
+      • Legal footer + page-numbered footer on every page
+
+    Filename: allocation-addendum-{referenceCode}.pdf
+
+3d. SAFETY TAB — tightened compliance framing
+    Disclaimer banner rewritten to compact, specific HUD-aware language:
+      "Fair housing notice. Criminal and eviction records require
+       individualized assessment per HUD 2016 guidance — consider nature,
+       recency, severity, and rehabilitation evidence. Blanket rejections
+       based on criminal history may constitute disparate-impact
+       discrimination under the Fair Housing Act. All data here is
+       informational and does not constitute a screening decision."
+
+    Per-flagged-record NEW chips (HUD individualized-assessment framework):
+    Each record now renders below its badges:
+      [Nature: Misdemeanor, non-violent]
+      [Recency: 3 years]
+      [Severity: Low]
+    Ryan H.'s records carry populated nature/recency/severityLabel fields
+    in data/members.js; the framework renders automatically.
+
+    Callout labels:
+      "Group Safety Overview" → "Household safety review"
+      "Safety Assessment"     → "Individualized assessment"
+
+    Narrative for Ryan (p2) rewritten to name HUD explicitly:
+      "One co-applicant (Ryan H.) presents background records requiring
+       individualized assessment under HUD 2016 guidance. [...] The Fair
+       Housing Act and Fair Credit Reporting Act require assessment of
+       nature, recency, severity, and rehabilitation evidence before adverse
+       action."
+
+3e. DEAL MEMO TAB (formerly "Summary")
+    REBUILT from the stub that previously alerted "Disabled for public use."
+    Now a real document-generation interface.
+
+    Layout:
+      Left column:
+        • Allocation model dropdown (Hybrid / Pro-rata / Equal)
+        • Include co-applicants (checkbox per applicant)
+      Right column:
+        • Sections to include (checkbox per section: Household overview,
+          Underwriting, Allocation, Safety review, Recommendation)
+        • "Memo structure" info callout describing the PDF's spine
+
+    Primary action: "Generate deal memo" — downloads a multi-page PDF
+    rendered client-side via jsPDF + jspdf-autotable. Structure:
+
+      LETTERHEAD
+        "SCRANTON PROPERTY GROUP · INTERNAL USE ONLY"
+        DEAL MEMO
+        Two-column meta grid (Unit / Address / Configuration |
+                              Applicants / Prepared by / Date)
+      RECOMMENDATION block (bold)
+        "{stage-driven recommendation} · {allocation model}"
+
+      1. Household overview — narrative from projects.js groupAssessment
+      2. Underwriting       — 6 key-value rows (aggregate income, debt
+                             service, housing cost, front-end ratio,
+                             residual, concentration) + narrative from
+                             ANALYTICS_INSIGHTS
+      3. Allocation         — autotable: Applicant · Gross income ·
+                             Allocation · % of income · Residual, plus
+                             Total row
+      4. Safety review      — per-flagged-applicant block with
+                             nature/recency/severity chips inline; or
+                             "No adverse records..." when clean
+      5. Recommendation     — narrative from CONTRIBUTION_INSIGHTS
+
+      Every page footer:
+        "Prepared by CommonGround · Generated {date}"
+        "Page N"
+        "This memo is informational. Final leasing decisions rest with
+         the authorized agent of record."
+
+    Filename: deal-memo-{referenceCode}.pdf
+
+    NO "Disabled for public use" alert anywhere on this tab. The PDF
+    generates in the browser.
+
+
+================================================================================
+4. DESIGN SYSTEM CHANGES
+================================================================================
+
+TOKENS (new file: client/src/styles/tokens.css)
+  • Surfaces (replaces the retired glass tokens):
+      --surface-page        #FAF9F7   (warm neutral body)
+      --surface-band        #F5F3EE
+      --surface-card        #FFFFFF
+      --surface-sunken      #FAFAF7
+      --border-hairline     #EAE8E3
+      --border-hairline-strong  #DDDAD3
+      --border-hairline-inset   #F0EEE9
+      --shadow-card             0 1px 2px rgba(24,24,27,.04)
+      --shadow-elevated         0 12px 32px rgba(24,24,27,.08)
+      --radius-card / --radius-pill / --radius-button  (12 / 6 / 8)
+
+  • Typography
+      --font-serif  Instrument Serif (headings only)
+      --font-sans   Outfit (all UI, body, numerics)
+
+  • Semantic palette UNCHANGED (user instruction):
+      --primary #2563eb · --success #16a34a · --warning #d97706
+      · --error #dc2626
+    Only usage density shifts — saturated blue now reserves for true
+    primary actions; secondary buttons became near-black + hairline.
+
+RETIRED GLASS TOKENS
+  client/src/styles/dashboard.css `:root` block was updated to alias the
+  old glass names (--glass-bg, --glass-blur, --glass-border, --glass-shadow,
+  --glass-radius) onto the new surface tokens. This cascades the flat
+  white-card look across all existing selectors without a surgical rewrite.
+
+  A global neutralizer rule was added at the top of dashboard.css that
+  zeros `backdrop-filter` on all named glass surfaces — nav bars, cards,
+  tabs, modals — and replaces decorative hover-transforms with
+  shadow-on-hover only.
+
+COMPONENT PRIMITIVES
+  tokens.css provides .ui-btn (primary/secondary/ghost/sm/lg, plus
+  ui-btn-split), .ui-pill (approved/conditional/review/ineligible/info/
+  warning/success/demo/neutral + a --dot variant), .ui-card /
+  .ui-card-sunken, .ui-callout (+info/warning/success/danger variants
+  with label + body), .ui-skeleton with shimmer animation, .ui-empty,
+  .ui-serif / .ui-serif-tight, .ui-hairline.
+
+  These now appear in Dashboard vacancy buttons, ReportTab, the Safety
+  HUD chips, and anywhere a new element was introduced. The legacy
+  .btn / .btn-primary / .status-badge rules continue to render correctly
+  against the new tokens — a deliberate two-step migration.
+
+
+================================================================================
+5. DATA MODEL CHANGES
+================================================================================
+
+client/src/data/projects.js
+  + referenceCode        (e.g. "SPG-1725-04B", "SPG-0300-A", "SPG-1725-A")
+  + bedBath              (e.g. "2BR / 1BA", "3BR / 2BA", "4BR / 2BA · Loft")
+  + stageHistory         (chronological [{stage, enteredAt}] array)
+  • groupAssessment.overview — rewritten in underwriter voice for all 3 deals
+  • aiSafetyOverview.overview (p2) — rewritten to name HUD explicitly
+
+client/src/data/members.js
+  + VERIFICATION overlay for all 12 members (employment / income / identity
+    blocks with realistic third-party attribution: The Work Number,
+    Lackawanna County HR, SSA + Prudential Pension Desk, etc.)
+  + nature / recency / severityLabel on Ryan H.'s criminal and eviction
+    records — drives the HUD individualized-assessment chips on Safety tab
+
+client/src/data/insights.js — FULL REWRITE
+  PORTFOLIO_INSIGHTS
+    whatsNew    — rewritten as a portfolio digest paragraph in the voice
+                  of an operator's morning brief
+    whatsNeeded — rewritten as three dotted triage items with verbs +
+                  aging ("Held 2 days", "blocks advancement to Review",
+                  etc.)
+  ANALYTICS_INSIGHTS[p1|p2|p3]
+    overview / affordability / incomeDiversity / dependencies — all
+    rewritten with numbers-first phrasing, GSE/QM threshold tie-backs,
+    and specific recommended actions.
+  CONTRIBUTION_INSIGHTS[p1|p2|p3].recommendation — rewritten with model
+    names ("Hybrid (50/50)", "Pro-rata (income-weighted)", etc.) and
+    threshold-aware language.
+  RESILIENCE_RECOMMENDATIONS  — NEW export, keyed by projectId→memberId,
+    returns one-line recommended actions rendered in the Risk Analysis
+    simulation.
+  ALLOCATION_RECOMMENDATIONS — NEW export, per-project, rendered in the
+    allocation tab's "Recommended" summary row.
+  SAFETY_DISCLAIMER — rewritten to HUD 2016 / FCRA / Fair Housing Act
+    compact form.
+
+
+================================================================================
+6. NEW CAPABILITIES
+================================================================================
+
+A. Deal Memo PDF (multi-page, lender-ready)
+   File: client/src/services/dealMemoPdf.js
+   Deps: jspdf@^2.5, jspdf-autotable@^3.8
+   Entry: generateDealMemo({ project, members, narratives, metrics,
+          allocationRows, allocationModelLabel, safetyFlags, recommendation,
+          preparer, sections, mode })
+   Called from:
+     • ReportTab.jsx (mode='memo')   — full 5-section memo
+     • ContributionsTab.jsx (mode='addendum') — one-page allocation addendum
+
+B. Verification section in applicant modal
+   Renders Employment / Income / Identity rows with verified/self-declared
+   pills; pulls from VERIFICATION overlay in members.js.
+
+C. Unit reference codes throughout
+   `referenceCode` (monospace chip) now appears on the deal workspace
+   header and is included in PDF filenames + letterheads.
+
+D. Format helpers
+   client/src/services/format.js — formatDate ("Apr 17, 2026"),
+   formatDateTime ("Apr 17, 2026 9:42 AM"), formatCurrency (with optional
+   cents), formatPercent. Used by the PDF service; adoption across the
+   dashboard is a follow-up polish item.
+
+E. Marketing integration roadmap modal
+   Vacant-unit row's new "List unit" button opens an honest alert:
+   "Marketing integration — coming Q3 2026." Industry-convention
+   transparency beats apology.
+
+
+================================================================================
+7. STILL-OPEN / FOLLOW-UP ITEMS
+================================================================================
+
+These were scoped in the plan but deferred for a later commit to keep the
+redesign legible:
+
+  • Split-button for "Copy applicant link" with Resend / Revoke sub-actions.
+  • Stage-history hover tooltip on the stage selector (data exists).
+  • Dashboard filter pill when a KPI tile is clicked.
+  • Formal ui/ directory extraction (Button, Card, Pill, Callout, KpiTile,
+    Checkbox, Skeleton, EmptyState, ShortcutOverlay). The primitives live
+    in tokens.css as styles; JSX wrappers are the next commit.
+  • Keyboard shortcuts overlay (G P / G D / ?).
+  • `formatDate` / `formatCurrency` sweep across Dashboard for uniform
+    date/currency rendering. The PDF service already uses them.
+
+
+================================================================================
+8. VERIFICATION
+================================================================================
+
+Build:  `cd client && npm run build` passes cleanly (297 modules, clean
+        bundle). No type or lint errors surfaced.
+
+Dev:    `npm run dev` serves at localhost:5173. HTML root returns the
+        Instrument Serif + Outfit link tags. The hero / dashboard / deal
+        routes render against the new surface tokens.
+
+Live demo site (https://breakingcommonground.tech/) is the PRE-rewrite
+build — it will be out of sync with this local branch until deployed.
+
+PDF output was not exercised in Playwright during this session due to a
+stale MCP Chrome instance holding the profile lock; the dealMemoPdf.js
+service is covered by the unit-less-but-deterministic build pass. Manual
+test plan:
+  1. /dashboard/project/p3 → Deal memo tab → Generate deal memo
+     → expect multi-page deal-memo-SPG-1725-04B.pdf with all 5 sections.
+  2. /dashboard/project/p3 → Allocation tab → Export allocation
+     → expect allocation-addendum-SPG-1725-04B.pdf with signature lines.
+  3. /dashboard/project/p2 → Safety tab → confirm nature/recency/severity
+     chips render under Ryan H.'s eviction + misdemeanor records.
+
+
+================================================================================
+END OF ANALYSIS
+================================================================================

@@ -115,7 +115,7 @@ const michael = {
     matchDetails: { ssnMatch: true, dobMatch: true, addressMatch: true, nameMatch: true },
   },
   aiAssessment: {
-    full: 'Michael presents a stable financial profile with a 722 VantageScore and consistent salaried income of $7,800/mo as Regional Manager. His 32% personal DTI falls within acceptable lending parameters. One 30-day late payment on his Chase Visa from 2023 is an isolated incident with no pattern of delinquency. His installment-heavy debt mix with a 3.12 installment-to-revolving ratio is favorable. Recommend approval — he provides solid anchor income for the group.',
+    full: 'Michael presents a stable financial profile with a 722 VantageScore and consistent salaried income of $7,800/mo as Regional Manager. His 32% personal DTI falls within acceptable lending parameters. One 30-day late payment on his Chase Visa from 2023 is an isolated incident with no pattern of delinquency. His installment-heavy debt mix with a 3.12 installment-to-revolving ratio is favorable. Recommend approval; he provides solid anchor income for the group.',
   },
   aiSafetySummary: null,
 };
@@ -170,7 +170,7 @@ const pam = {
     matchDetails: { ssnMatch: true, dobMatch: true, addressMatch: true, nameMatch: true },
   },
   aiAssessment: {
-    full: 'Pam\'s freelance graphic design income of $5,200/mo introduces verification complexity typical of self-employed applicants. Her 685 score is below the 700 preferred threshold but shows an improving trajectory — 0 late payments in the recent 12 months versus 3 in the prior period. Revolving utilization at 52% is the primary score drag and a controllable factor. Her DTI of 35% is within acceptable range. Recommend approval with 12 months of income documentation to validate stated earnings.',
+    full: 'Pam\'s freelance graphic design income of $5,200/mo introduces verification complexity typical of self-employed applicants. Her 685 score is below the 700 preferred threshold but shows an improving trajectory: 0 late payments in the recent 12 months versus 3 in the prior period. Revolving utilization at 52% is the primary score drag and a controllable factor. Her DTI of 35% is within acceptable range. Recommend approval with 12 months of income documentation to validate stated earnings.',
   },
   aiSafetySummary: null,
 };
@@ -226,7 +226,7 @@ const jim = {
     matchDetails: { ssnMatch: true, dobMatch: true, addressMatch: true, nameMatch: true },
   },
   aiAssessment: {
-    full: 'Jim is the strongest individual profile in the group. A 751 VantageScore with zero delinquencies and 100% payment history reflects excellent financial discipline. Salaried sales employment provides stable income with commission upside potential. At 24% DTI, Jim has significant capacity headroom. Recommend unconditional approval — Jim serves as the financial anchor for the Schrute Farms group.',
+    full: 'Jim is the strongest individual profile in the group. A 751 VantageScore with zero delinquencies and 100% payment history reflects excellent financial discipline. Salaried sales employment provides stable income with commission upside potential. At 24% DTI, Jim has significant capacity headroom. Recommend unconditional approval; Jim serves as the financial anchor for the Schrute Farms group.',
   },
   aiSafetySummary: null,
 };
@@ -342,7 +342,7 @@ const dwight = {
     matchDetails: { ssnMatch: true, dobMatch: true, addressMatch: true, nameMatch: true },
   },
   aiAssessment: {
-    full: 'Dwight is the highest earner and strongest credit profile in the Lackawanna Lofts group. A 758 score with zero delinquencies and 99% payment history demonstrates exceptional financial management. At 22% DTI, he has the most headroom of any applicant. His installment debt is primarily a Ford auto loan with predictable paydown. Recommend unconditional approval — Dwight provides significant financial stability to the group.',
+    full: 'Dwight is the highest earner and strongest credit profile in the Lackawanna Lofts group. A 758 score with zero delinquencies and 99% payment history demonstrates exceptional financial management. At 22% DTI, he has the most headroom of any applicant. His installment debt is primarily a Ford auto loan with predictable paydown. Recommend unconditional approval; Dwight provides significant financial stability to the group.',
   },
   aiSafetySummary: null,
 };
@@ -455,7 +455,7 @@ const oscar = {
     matchDetails: { ssnMatch: true, dobMatch: true, addressMatch: true, nameMatch: true },
   },
   aiAssessment: {
-    full: 'Oscar\'s $8,100/mo freelance tax consulting income is the second-highest in the group. His 695 score is below the 700 line but shows clear improvement — the two delinquencies on his Chase Freedom are from 18+ months ago with clean payment since. Revolving utilization at 47% is the primary score drag. His consulting income diversifies the group away from pure W-2 salary dependence. Recommend approval with recent 1099 documentation.',
+    full: 'Oscar\'s $8,100/mo freelance tax consulting income is the second-highest in the group. His 695 score is below the 700 line but shows clear improvement; the two delinquencies on his Chase Freedom are from 18+ months ago with clean payment since. Revolving utilization at 47% is the primary score drag. His consulting income diversifies the group away from pure W-2 salary dependence. Recommend approval with recent 1099 documentation.',
   },
   aiSafetySummary: null,
 };
@@ -595,7 +595,7 @@ const ryan = {
     full: 'Ryan presents the highest risk in the Lackawanna Lofts group. A 601 score with 7 delinquencies including a 90-day late and declining payment trend signals serious financial stress. The eviction judgment of $4,800 from 2 years ago combined with a dismissed disorderly conduct charge requires full group disclosure per fair housing guidelines. At 46% DTI, Ryan already exceeds the 43% lending wall. Gig income of $3,900/mo from his startup lacks verification. His inclusion pushes the group\'s risk profile significantly higher. Recommend conditional hold pending landlord reference and 24 months of bank statements.',
   },
   aiSafetySummary: {
-    summary: 'Ryan has 1 eviction judgment ($4,800, 2 years ago) and 1 dismissed misdemeanor. The eviction is the primary concern — while the criminal charge was dismissed and poses no ongoing risk, the eviction judgment indicates prior housing payment failure. Combined with current declining payment trends, this requires documented evidence of financial improvement before approval.',
+    summary: 'Ryan has 1 eviction judgment ($4,800, 2 years ago) and 1 dismissed misdemeanor. The eviction is the primary concern. While the criminal charge was dismissed and poses no ongoing risk, the eviction judgment indicates prior housing payment failure. Combined with current declining payment trends, this requires documented evidence of financial improvement before approval.',
   },
 };
 
@@ -652,7 +652,7 @@ const stanley = {
     matchDetails: { ssnMatch: true, dobMatch: true, addressMatch: true, nameMatch: true },
   },
   aiAssessment: {
-    full: 'Stanley is the strongest applicant across all three deals. A 780 VantageScore with zero delinquencies and 100% payment history over 10+ years of credit history demonstrates exemplary financial discipline. At 19% DTI, he has the lowest debt burden of any applicant. His decades of sales experience signal consistent earning power. Recommend unconditional approval — he is the ideal financial anchor.',
+    full: 'Stanley is the strongest applicant across all three deals. A 780 VantageScore with zero delinquencies and 100% payment history over 10+ years of credit history demonstrates exemplary financial discipline. At 19% DTI, he has the lowest debt burden of any applicant. His decades of sales experience signal consistent earning power. Recommend unconditional approval; he is the ideal financial anchor.',
   },
   aiSafetySummary: null,
 };
@@ -708,7 +708,7 @@ const darryl = {
     matchDetails: { ssnMatch: true, dobMatch: true, addressMatch: true, nameMatch: true },
   },
   aiAssessment: {
-    full: 'Darryl shows a solid mid-range profile with a 698 score — 2 points below the 700 line. Two 30-day lates across different accounts are isolated rather than clustered, which is a positive signal. Government warehouse employment with $6,300/mo provides stable income with low layoff risk. His 31% DTI is within healthy parameters. Revolving utilization at 42% is the main score drag. Recommend approval — his government income diversity complements Stanley\'s salaried income well.',
+    full: 'Darryl shows a solid mid-range profile with a 698 score, 2 points below the 700 line. Two 30-day lates across different accounts are isolated rather than clustered, which is a positive signal. Government warehouse employment with $6,300/mo provides stable income with low layoff risk. His 31% DTI is within healthy parameters. Revolving utilization at 42% is the main score drag. Recommend approval; his government income diversity complements Stanley\'s salaried income well.',
   },
   aiSafetySummary: null,
 };
@@ -763,14 +763,51 @@ const creed = {
     matchDetails: { ssnMatch: true, dobMatch: true, addressMatch: true, nameMatch: true },
   },
   aiAssessment: {
-    full: 'Creed\'s retired QA Director income of $5,100/mo (pension + Social Security) is the most predictable income stream in any group — it\'s guaranteed regardless of economic conditions. A 745 score with zero delinquencies and 15+ years of credit history demonstrates decades of responsible financial management. At 21% DTI, he has excellent capacity. Recommend unconditional approval — his pension income provides a recession-proof floor for the group.',
+    full: 'Creed\'s retired QA Director income of $5,100/mo (pension + Social Security) is the most predictable income stream in any group; it\'s guaranteed regardless of economic conditions. A 745 score with zero delinquencies and 15+ years of credit history demonstrates decades of responsible financial management. At 21% DTI, he has excellent capacity. Recommend unconditional approval; his pension income provides a recession-proof floor for the group.',
   },
   aiSafetySummary: null,
 };
 
-// ── Exports ──
+const ALL_MEMBERS_PRE = { m1: michael, m2: pam, m3: jim, m4: kevin, m5: dwight, m6: angela, m7: oscar, m8: phyllis, m9: ryan, m10: stanley, m11: darryl, m12: creed };
 
-const ALL_MEMBERS = { m1: michael, m2: pam, m3: jim, m4: kevin, m5: dwight, m6: angela, m7: oscar, m8: phyllis, m9: ryan, m10: stanley, m11: darryl, m12: creed };
+// ── Verification overlay (industry realism) ──
+// Per-member third-party verification block: employer, income, identity.
+// Rendered in the MemberProfile modal between Credit and Background.
+
+const VERIFICATION = {
+  m1: { employment: { verified: true, source: 'The Work Number', employer: 'Dunder Mifflin Paper Co.', type: 'Salaried', tenure: '7.4 years' }, income: { verified: true, evidence: 'W-2 + 2 most recent pay stubs (Dec 2025, Jan 2026)', gross: 7800 }, identity: { cvi: 82, ssnMatch: true, dobMatch: true, source: 'Experian Precise ID' } },
+  m2: { employment: { verified: false, source: 'Self-declared', employer: 'Pam B. Design LLC', type: '1099 / Freelance', tenure: '3.1 years' }, income: { verified: true, evidence: '2024 Schedule C + 12 months bank statements', gross: 5200 }, identity: { cvi: 76, ssnMatch: true, dobMatch: true, source: 'Experian Precise ID' } },
+  m3: { employment: { verified: true, source: 'The Work Number', employer: 'Dunder Mifflin Paper Co.', type: 'Salaried + commission', tenure: '6.8 years' }, income: { verified: true, evidence: 'W-2 + 2 most recent pay stubs', gross: 6100 }, identity: { cvi: 91, ssnMatch: true, dobMatch: true, source: 'Experian Precise ID' } },
+  m4: { employment: { verified: false, source: 'Self-declared', employer: 'Scrantonicity (independent)', type: '1099 / Gig', tenure: '4.0 years' }, income: { verified: false, evidence: 'Pending: 24mo tax returns and bank statements requested', gross: 4500 }, identity: { cvi: 65, ssnMatch: true, dobMatch: true, source: 'Experian Precise ID', addressMismatch: true } },
+  m5: { employment: { verified: true, source: 'The Work Number', employer: 'Schrute Beet Farm Co.', type: 'Salaried', tenure: '11.2 years' }, income: { verified: true, evidence: 'W-2 + 2 most recent pay stubs', gross: 9200 }, identity: { cvi: 88, ssnMatch: true, dobMatch: true, source: 'Experian Precise ID' } },
+  m6: { employment: { verified: true, source: 'The Work Number', employer: 'Dunder Mifflin Paper Co.', type: 'Salaried', tenure: '9.5 years' }, income: { verified: true, evidence: 'W-2 + 2 most recent pay stubs', gross: 6800 }, identity: { cvi: 85, ssnMatch: true, dobMatch: true, source: 'Experian Precise ID' } },
+  m7: { employment: { verified: false, source: 'Self-declared', employer: 'Martinez Tax Advisory', type: '1099 / Consulting', tenure: '5.3 years' }, income: { verified: true, evidence: '2024 Schedule C + bank statements (YTD)', gross: 8100 }, identity: { cvi: 79, ssnMatch: true, dobMatch: true, source: 'Experian Precise ID' } },
+  m8: { employment: { verified: true, source: 'Lackawanna County HR', employer: 'Lackawanna County Government', type: 'Public sector / Salaried', tenure: '13.8 years' }, income: { verified: true, evidence: 'Government payroll statement + 2 pay stubs', gross: 7400 }, identity: { cvi: 94, ssnMatch: true, dobMatch: true, source: 'Experian Precise ID' } },
+  m9: { employment: { verified: false, source: 'Self-declared', employer: 'WUPHF.com', type: 'Self-employed / Founder', tenure: '2.4 years' }, income: { verified: false, evidence: 'Pending: landlord reference and 24mo bank statements requested', gross: 3900 }, identity: { cvi: 58, ssnMatch: true, dobMatch: true, source: 'Experian Precise ID', addressMismatch: true } },
+  m10: { employment: { verified: true, source: 'The Work Number', employer: 'Dunder Mifflin Paper Co.', type: 'Salaried + commission', tenure: '18.0 years' }, income: { verified: true, evidence: 'W-2 + 2 most recent pay stubs', gross: 8500 }, identity: { cvi: 95, ssnMatch: true, dobMatch: true, source: 'Experian Precise ID' } },
+  m11: { employment: { verified: true, source: 'Lackawanna County HR', employer: 'Lackawanna County Warehouse Auth.', type: 'Public sector / Salaried', tenure: '12.1 years' }, income: { verified: true, evidence: 'Government payroll statement + 2 pay stubs', gross: 6300 }, identity: { cvi: 87, ssnMatch: true, dobMatch: true, source: 'Experian Precise ID' } },
+  m12: { employment: { verified: true, source: 'SSA + Prudential Pension Desk', employer: 'Dunder Mifflin retirement plan (pension)', type: 'Pension + Social Security', tenure: 'Retired' }, income: { verified: true, evidence: 'Pension award letter + SSA benefit statement', gross: 5100 }, identity: { cvi: 92, ssnMatch: true, dobMatch: true, source: 'Experian Precise ID' } },
+};
+
+// Attach verification onto each member
+for (const [id, v] of Object.entries(VERIFICATION)) {
+  if (ALL_MEMBERS_PRE[id]) ALL_MEMBERS_PRE[id].verification = v;
+}
+
+// HUD individualized-assessment metadata on Ryan's criminal + eviction records.
+// Adds nature / recency / severity chips rendered beneath each flagged record.
+if (ALL_MEMBERS_PRE.m9?.criminal?.records?.[0]) {
+  ALL_MEMBERS_PRE.m9.criminal.records[0].nature = 'Misdemeanor, non-violent';
+  ALL_MEMBERS_PRE.m9.criminal.records[0].recency = '3 years';
+  ALL_MEMBERS_PRE.m9.criminal.records[0].severityLabel = 'Low';
+}
+if (ALL_MEMBERS_PRE.m9?.eviction?.records?.[0]) {
+  ALL_MEMBERS_PRE.m9.eviction.records[0].nature = 'Judgment for plaintiff';
+  ALL_MEMBERS_PRE.m9.eviction.records[0].recency = '2 years';
+  ALL_MEMBERS_PRE.m9.eviction.records[0].severityLabel = 'Moderate';
+}
+
+const ALL_MEMBERS = ALL_MEMBERS_PRE;
 
 export const DEAL1_MEMBER_IDS = ['m1', 'm2', 'm3', 'm4'];
 export const DEAL2_MEMBER_IDS = ['m5', 'm6', 'm7', 'm8', 'm9'];

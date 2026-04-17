@@ -334,9 +334,11 @@ export default function IntakeForm() {
           <button
             type="button"
             className="submit-btn"
-            onClick={() => alert('Disabled for public use')}
+            disabled
+            aria-disabled="true"
+            title="Submission is disabled in the public demo."
           >
-            Submit Info
+            Submit info · demo only
           </button>
         </form>
       </div>
